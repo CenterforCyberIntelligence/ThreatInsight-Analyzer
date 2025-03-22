@@ -5,23 +5,18 @@
 
 A web-based tool that uses AI to aid in rapid summarization and analysis of cybersecurity articles to generate structured threat intelligence insights.
 
+## Current Status
+
+This project is in active development. Features are being implemented incrementally, and the codebase is evolving. Known issues are documented in the [Known Issues](Known%20Issues.md) file. If you are a fan of this project and want to see it keep growing, consider adding some fuel to the tank. 
+
 <div align="center">
   <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
   </a>
+  <p>
 </div>
-
-## Current Status
 
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
-
-<div align="center">
-  <a href="#development-status">
-    <img src="https://img.shields.io/badge/Status-Active_Development-BC8F8F?style=for-the-badge" alt="Active Development" />
-  </a>
-</div>
-
-This project is in active development. Features are being implemented incrementally, and the codebase is evolving. Known issues are documented in the [Known Issues](Known%20Issues.md) file.
 
 ## Technology Overview
 - **Release Date:** March 22, 2025
@@ -191,9 +186,17 @@ Open `http://localhost:8000` in your browser
 This project is a work-in-progress, and many features are still being refined. The code is shared in its current state to demonstrate the concept and gather feedback. Please review the Known Issues document for a list of identified issues. If you like this project, consider buying me a coffee!
 
 <div align="center">
-  <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
-  </a>
+  <div align="center">
+    <a href="#development-status">
+      <img src="https://img.shields.io/badge/Status-Active_Development-BC8F8F?style=for-the-badge" alt="Active Development" />
+    </a>
+  </div>
+  <p>
+  <div align="center">
+    <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
+      <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
+    </a>
+  </div>
 </div>
 
 ## Security Notes
