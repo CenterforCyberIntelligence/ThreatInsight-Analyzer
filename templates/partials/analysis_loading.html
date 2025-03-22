@@ -1,0 +1,47 @@
+<div class="card analysis-loading" id="analysis-loading">
+    <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-spinner fa-spin"></i> Analysis in Progress</h2>
+    </div>
+    <div class="card-body">
+        <div class="progress-steps">
+            <div class="progress-step {{ 'active' if step == 'extract' or step == 'analyze' or step == 'complete' else '' }} {{ 'complete' if step != 'extract' else '' }}"
+                id="extract-step">
+                <div class="step-icon" id="extract-icon">
+                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'extract' else 'fa-check' if step != 'extract' else 'fa-file-alt' }}"></i>
+                </div>
+                <div class="step-label">Extracting Content</div>
+            </div>
+            <div class="progress-step {{ 'active' if step == 'analyze' or step == 'complete' else '' }} {{ 'complete' if step == 'complete' else '' }}"
+                id="analyze-step">
+                <div class="step-icon" id="analyze-icon">
+                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'analyze' else 'fa-check' if step == 'complete' else 'fa-brain' }}"></i>
+                </div>
+                <div class="step-label">AI Analysis</div>
+            </div>
+            <div class="progress-step {{ 'active' if step == 'complete' else '' }}"
+                id="complete-step">
+                <div class="step-icon" id="complete-icon">
+                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'complete' else 'fa-check' }}"></i>
+                </div>
+                <div class="step-label">Generating Report</div>
+            </div>
+        </div>
+        <div class="progress-message" id="progress-message">
+            {% if step == 'extract' %}
+            Extracting content from {{ url }}...
+            {% elif step == 'analyze' %}
+            Analyzing content with {{ model }}...
+            {% elif step == 'complete' %}
+            Generating report...
+            {% endif %}
+        </div>
+        
+        {% if step == 'extract' %}
+        <div hx-get="/analysis/status?url={{ url }}&step=analyze" hx-trigger="load delay:500ms" hx-target="#analysis-loading" hx-swap="outerHTML"></div>
+        {% elif step == 'analyze' %}
+        <div hx-get="/analysis/status?url={{ url }}&step=complete" hx-trigger="load delay:500ms" hx-target="#analysis-loading" hx-swap="outerHTML"></div>
+        {% elif step == 'complete' %}
+        <div hx-get="/analysis/result?url={{ url }}&model={{ model }}" hx-trigger="load delay:500ms" hx-target="#analysis-loading" hx-swap="outerHTML"></div>
+        {% endif %}
+    </div>
+</div> 

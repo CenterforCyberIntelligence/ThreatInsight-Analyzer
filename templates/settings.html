@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyzer Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', t=current_time) }}">
+    <!-- HTMX Library -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <a href="/" class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    Center for Cyber Intelligence | 
+                    <span style="font-weight: 400; opacity: 0.8;">  ThreatInsight Analyzer</span>
+                </a>
+                <div class="model-badge">
+                    <i class="fas fa-brain"></i>
+                    Powered by OpenAI
+                </div>
+                <nav class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/statistics" class="nav-link">Statistics</a>
+                    <a href="/settings" class="nav-link active">Settings</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="htmx-indicator">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <main class="main">
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-cog"></i> Analyzer Settings</h2>
+                    <p class="card-subtitle">Configure environment variables and manage database</p>
+                </div>
+                <div class="card-body">
+                    <div class="settings-section">
+                        <h3><i class="fas fa-sliders-h"></i> Environment Variables</h3>
+                        <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> Changes to environment variables will take effect after restarting the application.</p>
+                        
+                        <form id="env-form" 
+                              hx-post="/settings/update_env" 
+                              hx-target="#env-result"
+                              hx-indicator="#loading-indicator">
+                              
+                            <div class="form-group">
+                                <label for="OPENAI_API_KEY">OpenAI API Key:</label>
+                                <input type="password" id="OPENAI_API_KEY" name="OPENAI_API_KEY" class="form-control" 
+                                       value="{{ env_vars.OPENAI_API_KEY }}" autocomplete="off">
+                                <small class="form-text">Your OpenAI API key for authentication</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="OPENAI_MODEL">Default OpenAI Model:</label>
+                                <input type="text" id="OPENAI_MODEL" name="OPENAI_MODEL" class="form-control" 
+                                       value="{{ env_vars.OPENAI_MODEL }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="OPENAI_TEMPERATURE">OpenAI Temperature:</label>
+                                <input type="text" id="OPENAI_TEMPERATURE" name="OPENAI_TEMPERATURE" class="form-control" 
+                                       value="{{ env_vars.OPENAI_TEMPERATURE }}">
+                                <small class="form-text">Value between 0.0 and 1.0</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="OPENAI_MAX_TOKENS">OpenAI Max Tokens:</label>
+                                <input type="text" id="OPENAI_MAX_TOKENS" name="OPENAI_MAX_TOKENS" class="form-control" 
+                                       value="{{ env_vars.OPENAI_MAX_TOKENS }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="AVAILABLE_MODELS">Available Models (JSON):</label>
+                                <textarea id="AVAILABLE_MODELS" name="AVAILABLE_MODELS" class="form-control code-textarea" rows="8">{{ env_vars.AVAILABLE_MODELS }}</textarea>
+                                <small class="form-text">JSON format required</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="FLASK_HOST">Flask Host:</label>
+                                <input type="text" id="FLASK_HOST" name="FLASK_HOST" class="form-control" 
+                                       value="{{ env_vars.FLASK_HOST }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="FLASK_PORT">Flask Port:</label>
+                                <input type="text" id="FLASK_PORT" name="FLASK_PORT" class="form-control" 
+                                       value="{{ env_vars.FLASK_PORT }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="FLASK_DEBUG">Flask Debug Mode:</label>
+                                <select id="FLASK_DEBUG" name="FLASK_DEBUG" class="form-control">
+                                    <option value="1" {% if env_vars.FLASK_DEBUG == '1' %}selected{% endif %}>Enabled</option>
+                                    <option value="0" {% if env_vars.FLASK_DEBUG == '0' %}selected{% endif %}>Disabled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <div class="form-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="should_restart" name="should_restart" value="true" checked>
+                                        <span class="checkmark"></span>
+                                        Restart server after saving changes
+                                    </label>
+                                    <small class="form-text">Changes will take effect immediately if server is restarted</small>
+                                </div>
+                                <button type="submit" class="button primary-button">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="env-result" class="alert-container"></div>
+                    </div>
+                    
+                    <div class="settings-section danger-zone">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+                        <div class="danger-card">
+                            <div class="danger-info">
+                                <h4>Purge Database</h4>
+                                <p>This will permanently delete all articles, analysis results, and token usage statistics. This action cannot be undone.</p>
+                            </div>
+                            
+                            <button class="button danger-button"
+                                    onclick="document.getElementById('purge-confirmation-modal').style.display = 'flex'">
+                                <i class="fas fa-trash-alt"></i> Purge Database
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Database Statistics Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-database"></i> Database Statistics</h2>
+                </div>
+                <div class="card-body">
+                    <div class="stats-container">
+                        <div class="stat-item">
+                            <div class="stat-label">Total Articles</div>
+                            <div class="stat-value">{{ token_stats.overall.model_count }}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Input Tokens</div>
+                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.total_input) }}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Output Tokens</div>
+                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.total_output) }}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total Cached Tokens</div>
+                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.cached_input) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-copyright">
+                    <p>&copy; 2025 <a href="https://www.centerforcyberintelligence.org" target="_blank">Center for Cyber Intelligence</a>. All Rights Reserved.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="/">Home</a>
+                    <a href="/statistics">Statistics</a>
+                    <a href="/settings">Settings</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Database Purge Confirmation Modal (Hidden) -->
+    <div id="purge-confirmation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Confirm Database Purge</h3>
+                <button class="close-button" onclick="document.getElementById('purge-confirmation-modal').style.display = 'none'">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-container">
+                    <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> <strong>WARNING:</strong> This action is permanent and cannot be undone!</p>
+                    <p>You are about to delete <strong>ALL</strong> data from the database, including:</p>
+                    <ul>
+                        <li>All analysis results</li>
+                        <li>All article information</li>
+                        <li>All token usage statistics</li>
+                    </ul>
+                    <p>To proceed, type <strong>DELETE</strong> in the confirmation field below:</p>
+                    
+                    <form id="purge-form" 
+                          hx-post="/settings/purge_database"
+                          hx-target="#purge-result"
+                          hx-indicator="#loading-indicator">
+                        <div class="form-group">
+                            <input type="text" id="confirmation" name="confirmation" class="form-control" 
+                                  placeholder="Type DELETE to confirm" required>
+                        </div>
+                        <div class="form-actions modal-actions">
+                            <button type="button" class="button secondary-button"
+                                    onclick="document.getElementById('purge-confirmation-modal').style.display = 'none'">
+                                Cancel
+                            </button>
+                            <button type="submit" class="button danger-button">
+                                <i class="fas fa-trash-alt"></i> Permanently Delete All Data
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="purge-result" class="alert-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Server Restart Modal (Hidden) -->
+    <div id="server-restart-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-sync-alt"></i> Server Restarting</h3>
+            </div>
+            <div class="modal-body">
+                <div class="info-container text-center">
+                    <div class="spinner-container" style="margin: 1rem auto;">
+                        <div class="spinner"></div>
+                    </div>
+                    <p>The server is restarting to apply your changes...</p>
+                    <p>Page will reload in <span id="restart-countdown">5</span> seconds.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        /* Additional styles for the settings page */
+        body {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        
+        .main {
+            background-color: #1a202c;
+            min-height: calc(100vh - 180px);
+        }
+        
+        .card {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            background-color: #2d3748;
+            border-bottom: 1px solid #4a5568;
+            padding: 1.25rem 1.5rem;
+        }
+        
+        .card-title {
+            color: #fff;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-subtitle {
+            color: #a0aec0;
+            margin-top: 0.5rem;
+        }
+        
+        .settings-section {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        .settings-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            border: 1px solid #4a5568;
+            font-size: 0.875rem;
+        }
+        
+        .form-control:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
+            outline: none;
+        }
+        
+        .code-textarea {
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        label {
+            color: #e2e8f0;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-text {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+        
+        .form-actions {
+            margin-top: 1.5rem;
+        }
+        
+        .button {
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .primary-button {
+            background-color: #4299e1;
+            color: white;
+        }
+        
+        .primary-button:hover {
+            background-color: #3182ce;
+        }
+        
+        .secondary-button {
+            background-color: #4a5568;
+            color: white;
+        }
+        
+        .secondary-button:hover {
+            background-color: #2d3748;
+        }
+        
+        .danger-zone {
+            background-color: rgba(229, 62, 62, 0.1);
+            border-radius: 6px;
+            padding: 1.25rem;
+        }
+        
+        .danger-zone h3 {
+            color: #fc8181;
+            margin-top: 0;
+        }
+        
+        .danger-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: #2d3748;
+            border: 1px solid #fc8181;
+            border-radius: 6px;
+        }
+        
+        .danger-info h4 {
+            margin: 0 0 0.5rem 0;
+            color: #fc8181;
+        }
+        
+        .danger-info p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+        
+        .danger-button {
+            background-color: #e53e3e;
+            color: white;
+        }
+        
+        .danger-button:hover {
+            background-color: #c53030;
+        }
+        
+        .alert-container {
+            margin-top: 1rem;
+        }
+        
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+        
+        .alert-success {
+            background-color: rgba(72, 187, 120, 0.2);
+            border: 1px solid #48bb78;
+            color: #9ae6b4;
+        }
+        
+        .alert-error {
+            background-color: rgba(229, 62, 62, 0.2);
+            border: 1px solid #e53e3e;
+            color: #fc8181;
+        }
+        
+        .alert-info {
+            background-color: rgba(66, 153, 225, 0.2);
+            border: 1px solid #4299e1;
+            color: #90cdf4;
+        }
+        
+        .warning-text {
+            color: #f6ad55;
+            font-weight: 500;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal:target,
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: #2d3748;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #e2e8f0;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #4a5568;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #fc8181;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #a0aec0;
+        }
+        
+        .close-button:hover {
+            color: #e2e8f0;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+        
+        .warning-container {
+            color: #e2e8f0;
+        }
+        
+        .warning-container ul {
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 6px;
+            padding: 1.25rem;
+            min-width: 150px;
+            flex-grow: 1;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #a0aec0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+        
+        /* Checkbox styling */
+        .checkbox-container {
+            display: block;
+            position: relative;
+            padding-left: 35px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            user-select: none;
+            color: #e2e8f0;
+        }
+        
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+        }
+        
+        .checkbox-container:hover input ~ .checkmark {
+            background-color: #2d3748;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: #4299e1;
+            border-color: #4299e1;
+        }
+        
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+        
+        .checkbox-container .checkmark:after {
+            left: 7px;
+            top: 3px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        
+        /* Footer styles */
+        .footer {
+            background-color: #2d3748;
+            color: #a0aec0;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            border-top: 1px solid #4a5568;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .footer-copyright p {
+            margin: 0;
+            font-size: 0.875rem;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        .footer-links a {
+            color: #a0aec0;
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s ease;
+        }
+        
+        .footer-links a:hover {
+            color: #e2e8f0;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .info-container {
+            color: #e2e8f0;
+            padding: 1rem;
+        }
+        
+        .info-container p {
+            margin: 0.5rem 0;
+            font-size: 1rem;
+        }
+    </style>
+    
+    <script>
+        // JavaScript to handle modal and form responses
+        document.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.detail.target.id === 'purge-result' || evt.detail.target.id === 'env-result') {
+                const result = evt.detail.target;
+                try {
+                    const data = JSON.parse(result.innerText);
+                    
+                    // Clean response and show formatted message
+                    if (data.success) {
+                        result.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                        
+                        // If it was a database purge, close the modal after a brief delay and restart
+                        if (evt.detail.target.id === 'purge-result') {
+                            setTimeout(() => {
+                                // Hide the purge confirmation modal
+                                const purgeModal = document.getElementById('purge-confirmation-modal');
+                                if (purgeModal) {
+                                    purgeModal.style.display = 'none';
+                                }
+                                
+                                // Show the server restart modal
+                                const restartModal = document.getElementById('server-restart-modal');
+                                if (restartModal) {
+                                    restartModal.style.display = 'flex';
+                                }
+                                
+                                // Restart the backend
+                                fetch('/settings/restart', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+                                
+                                // Start the countdown
+                                let timeLeft = 5;
+                                const countdownEl = document.getElementById('restart-countdown');
+                                const countdownTimer = setInterval(() => {
+                                    timeLeft--;
+                                    if (countdownEl) {
+                                        countdownEl.textContent = timeLeft;
+                                    }
+                                    if (timeLeft <= 0) {
+                                        clearInterval(countdownTimer);
+                                        window.location.reload();
+                                    }
+                                }, 1000);
+                            }, 1000);
+                        }
+                        
+                        // If server is already restarting from env update, show restart modal
+                        if (data.restarting) {
+                            // Show the server restart modal
+                            const restartModal = document.getElementById('server-restart-modal');
+                            if (restartModal) {
+                                restartModal.style.display = 'flex';
+                            }
+                            
+                            // Start the countdown
+                            let timeLeft = 5;
+                            const countdownEl = document.getElementById('restart-countdown');
+                            const countdownTimer = setInterval(() => {
+                                timeLeft--;
+                                if (countdownEl) {
+                                    countdownEl.textContent = timeLeft;
+                                }
+                                if (timeLeft <= 0) {
+                                    clearInterval(countdownTimer);
+                                    window.location.reload();
+                                }
+                            }, 1000);
+                        }
+                    } else {
+                        result.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+                    }
+                } catch (e) {
+                    // If not valid JSON, just display as is
+                    console.error("Error parsing JSON response", e);
+                }
+            }
+        });
+        
+        // Close modal when clicking cancel or the X button
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close button in the modal header
+            const closeButton = document.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    document.getElementById('purge-confirmation-modal').style.display = 'none';
+                });
+            }
+            
+            // Cancel button in the modal actions
+            const cancelButton = document.querySelector('.modal-actions .secondary-button');
+            if (cancelButton) {
+                cancelButton.addEventListener('click', function() {
+                    document.getElementById('purge-confirmation-modal').style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,1628 @@
+<!-- Wrap everything in a single container so it all gets removed on close -->
+<div id="analysis-report-wrapper" hx-on:load="initializeAnalysisReport()" hx-trigger="load">
+    <!-- Add the cached banner at the top if result is cached -->
+    {% if cached %}
+    <div class="cached-banner">
+        <i class="fas fa-database"></i> Cached result from {{ analyzed_at }}
+        {% if not refreshed %}
+        <span class="banner-note">Use the refresh button for latest processing improvements</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if refreshed %}
+    <div class="refreshed-banner">
+        <i class="fas fa-sync-alt"></i> Analysis updated on {{ analyzed_at }}
+    </div>
+    {% endif %}
+
+    <!-- Custom modal for refresh confirmation and loading -->
+    <div id="refresh-modal" class="custom-modal">
+        <div class="modal-content">
+            <div id="modal-confirmation" class="modal-section">
+                <h3><i class="fas fa-sync-alt"></i> Refresh Analysis</h3>
+                <p>This will reanalyze the article with the latest processing techniques. Continue?</p>
+                <div class="modal-actions">
+                    <button id="modal-cancel" class="modal-btn cancel-btn">Cancel</button>
+                    <button id="modal-confirm" class="modal-btn confirm-btn">OK</button>
+                </div>
+            </div>
+            <div id="modal-loading" class="modal-section" style="display: none;">
+                <div class="loading-animation">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <p>Refreshing analysis...</p>
+                <p class="processing-note">This may take up to 30 seconds.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card analysis-result" id="analysis-result-container">
+        <div class="card-header">
+            <h2 class="card-title"><i class="fas fa-file-alt"></i> Analysis Report</h2>
+            <button class="close-btn" hx-get="/analyze-form" hx-target="#analysis-report-wrapper" hx-swap="outerHTML">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="result-header">
+                <div class="result-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Source:</span>
+                        <a href="{{ url }}" target="_blank" class="meta-value">{{ url|truncate(60) }}</a>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Model:</span>
+                        <span class="meta-value">{{ model }}</span>
+                    </div>
+                    {% if cached %}
+                    <div class="meta-item">
+                        <span class="meta-label">Status:</span>
+                        <span class="meta-value cached-result">
+                            <i class="fas fa-bolt"></i> Instant (Cached)
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="result-actions">
+                    <button class="btn-icon" id="copy-btn" title="Copy to clipboard">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon" id="print-btn" title="Print report">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    {% if cached %}
+                    <button class="btn-icon refresh-btn" 
+                            id="refresh-btn" 
+                            title="Refresh analysis with latest processing">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    {% endif %}
+                    {% if api_details %}
+                    <button class="btn-icon" id="toggle-api-details" title="Show API details">
+                        <i class="fas fa-code"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if api_details %}
+            <div class="api-details-container" id="api-details-panel" style="display: none;">
+                <div class="api-details-header">
+                    <h3><i class="fas fa-exchange-alt"></i> API Request Details</h3>
+                    <span class="api-details-subtitle">{% if cached %}Cached Request (Estimated){% else %}Live Request{% endif %}</span>
+                </div>
+                <div class="api-details-content">
+                    <!-- Model Info -->
+                    <div class="api-details-section">
+                        <div class="api-details-header">Model</div>
+                        <div class="api-details-content">
+                            {% if api_details and api_details.model %}
+                                {% set model_parts = api_details.model.split('-') %}
+                                {% if model_parts|length >= 2 %}
+                                    {{ model_parts[0] }}-{{ model_parts[1] }}
+                                {% else %}
+                                    {{ api_details.model }}
+                                {% endif %}
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- API Metrics -->
+                    <div class="api-details-section">
+                        <div class="api-details-header">Metrics</div>
+                        <div class="api-details-content">
+                            {% if api_details and api_details.response %}
+                                <div class="api-metrics">
+                                    <div class="api-metric">
+                                        <span class="metric-label">Input Tokens:</span>
+                                        <span class="metric-value">{{ api_details.response.input_tokens }}</span>
+                                    </div>
+                                    <div class="api-metric">
+                                        <span class="metric-label">Output Tokens:</span>
+                                        <span class="metric-value">{{ api_details.response.output_tokens }}</span>
+                                    </div>
+                                    <div class="api-metric">
+                                        <span class="metric-label">Total Tokens:</span>
+                                        <span class="metric-value">{{ api_details.response.total_tokens }}</span>
+                                    </div>
+                                </div>
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Request -->
+                    <div class="api-details-section">
+                        <div class="api-details-header">Request</div>
+                        <div class="api-details-content">
+                            {% if api_details and api_details.request %}
+                                <pre><code class="language-json">{{ api_details.request | tojson(indent=4) }}</code></pre>
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Completion Preview -->
+                    <div class="api-details-section">
+                        <div class="api-details-header">Completion</div>
+                        <div class="api-details-content">
+                            {% if api_details and api_details.response %}
+                                <div class="api-code-preview">{{ analysis }}</div>
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="result-content">
+                <div class="tabbed-view">
+                    <div class="tabs">
+                        <button class="tab-button active" id="btn-formatted">Analysis Report</button>
+                        <button class="tab-button" id="btn-raw">Raw Output</button>
+                    </div>
+                    
+                    <!-- Formatted View -->
+                    <div id="formatted" class="tab-content active">
+                        {% if structured_analysis.summary %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Summary
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">{{ structured_analysis.summary|safe }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.source_evaluation %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Source Evaluation
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="source-eval-minimal">
+                                    <div class="eval-row">
+                                        <span class="eval-label">Reliability:</span>
+                                        <span class="eval-value {{ structured_analysis.source_evaluation.reliability.level|lower }}">
+                                            {{ structured_analysis.source_evaluation.reliability.level }}
+                                        </span>
+                                        <span class="eval-detail">{{ structured_analysis.source_evaluation.reliability.justification|safe|capitalize }}</span>
+                                    </div>
+                                    
+                                    <div class="eval-row">
+                                        <span class="eval-label">Credibility:</span>
+                                        <span class="eval-value {{ structured_analysis.source_evaluation.credibility.level|lower }}">
+                                            {{ structured_analysis.source_evaluation.credibility.level }}
+                                        </span>
+                                        <span class="eval-detail">{{ structured_analysis.source_evaluation.credibility.justification|safe|capitalize }}</span>
+                                    </div>
+                                    
+                                    <div class="eval-row">
+                                        <span class="eval-label">Source Type:</span>
+                                        <span class="eval-value source-type">{{ structured_analysis.source_evaluation.source_type|safe }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.mitre_techniques and structured_analysis.mitre_techniques|length > 0 %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                MITRE ATT&CK Techniques
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="mitre-table-container">
+                                    <table class="mitre-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for technique in structured_analysis.mitre_techniques %}
+                                            <tr>
+                                                <td class="mitre-id-cell">
+                                                    {% if technique.id %}
+                                                        {% if '/' in technique.id %}
+                                                            {% set id_parts = technique.id.split('/') %}
+                                                            {% set technique_id = id_parts[0] %}
+                                                            {% set subtechnique_id = id_parts[1] %}
+                                                            <a href="https://attack.mitre.org/techniques/{{ technique_id }}/{{ subtechnique_id }}/" target="_blank" class="mitre-id">{{ technique.id }}</a>
+                                                        {% else %}
+                                                            <a href="https://attack.mitre.org/techniques/{{ technique.id }}/" target="_blank" class="mitre-id">{{ technique.id }}</a>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="no-id">Unknown</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="mitre-name-cell">{{ technique.name|safe }}</td>
+                                                <td class="mitre-desc-cell">
+                                                    {% if technique.description %}
+                                                        {{ technique.description|safe }}
+                                                    {% else %}
+                                                        <span class="no-desc">No description available</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.key_insights and structured_analysis.key_insights|length > 0 %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Key Threat Intelligence Insights
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="insights-minimal">
+                                    {% for insight in structured_analysis.key_insights %}
+                                    <div class="insight-item">{{ insight|safe }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.potential_issues %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Potential Bias or Issues
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="insights-minimal">
+                                    {% for issue in structured_analysis.potential_issues %}
+                                    <div class="insight-item">{{ issue|safe }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.relevance %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Relevance to U.S. Government
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="relevance-minimal">
+                                    <div class="relevance-score-badge score-{{ structured_analysis.relevance.score }}">
+                                        {{ structured_analysis.relevance.score }}/5
+                                    </div>
+                                    <div class="relevance-justification">{{ structured_analysis.relevance.justification|safe }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.indicators %}
+                        <div class="analysis-section">
+                            <h3>Extracted Indicators of Compromise (Automated)</h3>
+                            <div class="indicators-summary">
+                                <span class="indicator-count">{{ structured_analysis.indicators.total_count }} total indicators found</span>
+                                <span class="extraction-method">(Automatically extracted using pattern recognition)</span>
+                            </div>
+                            
+                            <!-- Network IOC Section -->
+                            {% set network_category = structured_analysis.indicators.categories[0] %}
+                            {% if network_category.types|selectattr('count', 'gt', 0)|list|length > 0 %}
+                            <div class="indicator-category">
+                                <h4 class="category-name">Network Indicators</h4>
+                                <div class="ioc-table-container">
+                                    <table class="ioc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for type in network_category.types %}
+                                            {% if type.count > 0 %}
+                                            {% for value in type.indicator_values %}
+                                            <tr>
+                                                <td class="ioc-type">{{ type.type }}</td>
+                                                <td class="ioc-value">{{ value }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- File IOC Section -->
+                            {% set file_category = structured_analysis.indicators.categories[1] %}
+                            {% if file_category.types|selectattr('count', 'gt', 0)|list|length > 0 %}
+                            <div class="indicator-category">
+                                <h4 class="category-name">File Indicators</h4>
+                                <div class="ioc-table-container">
+                                    <table class="ioc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for type in file_category.types %}
+                                            {% if type.count > 0 %}
+                                            {% for value in type.indicator_values %}
+                                            <tr>
+                                                <td class="ioc-type">{{ type.type }}</td>
+                                                <td class="ioc-value">{{ value }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Email Section -->
+                            {% set other_category = structured_analysis.indicators.categories[2] %}
+                            {% set email_type = other_category.types[0] %}
+                            {% if email_type.count > 0 %}
+                            <div class="indicator-category">
+                                <h4 class="category-name">Email Addresses</h4>
+                                <div class="ioc-table-container">
+                                    <table class="ioc-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for value in email_type.indicator_values %}
+                                            <tr>
+                                                <td class="ioc-value">{{ value }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- CVE Section -->
+                            {% set cve_type = other_category.types[1] %}
+                            {% if cve_type.count > 0 %}
+                            <div class="indicator-category">
+                                <h4 class="category-name">CVE IDs</h4>
+                                <div class="cve-container">
+                                    {% for value in cve_type.indicator_values %}
+                                    <div class="cve-item">
+                                        <a href="https://nvd.nist.gov/vuln/detail/{{ value }}" target="_blank" class="cve-link">{{ value }}</a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- MITRE ATT&CK Techniques Section -->
+                            {% set mitre_type = other_category.types[2] %}
+                            {% if mitre_type.count > 0 %}
+                            <div class="indicator-category">
+                                <h4 class="category-name">MITRE ATT&CK Techniques (Pattern-Extracted)</h4>
+                                <div class="mitre-table-container">
+                                    <table class="mitre-table simple">
+                                        <thead>
+                                            <tr>
+                                                <th>Technique ID</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for value in mitre_type.indicator_values %}
+                                            <tr>
+                                                <td class="mitre-id-cell">
+                                                    {% if '.' in value %}
+                                                        {% set id_parts = value.split('.') %}
+                                                        {% set main_id = id_parts[0] %}
+                                                        {% set sub_id = id_parts[1]|string|zfill(3) %}
+                                                        <a href="https://attack.mitre.org/techniques/{{ main_id }}/{{ sub_id }}/" target="_blank" class="mitre-id">{{ value }}</a>
+                                                    {% else %}
+                                                        <a href="https://attack.mitre.org/techniques/{{ value }}/" target="_blank" class="mitre-id">{{ value }}</a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
+                        <div class="analysis-section">
+                            <h3>Critical Infrastructure Sectors Assessment</h3>
+                            <div class="sectors-grid">
+                                {% for sector in structured_analysis.critical_sectors %}
+                                <div class="sector-item">
+                                    <div class="sector-header">
+                                        <span class="sector-name">{{ sector.name }}</span>
+                                        <span class="sector-score score-{{ sector.score }}">{{ sector.score }}/5</span>
+                                    </div>
+                                    {% if sector.justification %}
+                                    <p class="sector-justification">{{ sector.justification|safe }}</p>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Raw View -->
+                    <div id="raw" class="tab-content">
+                        <div class="raw-content" id="raw-content">
+                            <pre>{{ analysis }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> <!-- End of analysis-report-wrapper -->
+
+<head>
+    <!-- Add syntax highlighting library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+</head>
+
+<script>
+    // Reset initialization flag when the report is closed
+    document.addEventListener('htmx:beforeSwap', function(event) {
+        if (event.detail.target && event.detail.target.id === 'analysis-report-wrapper') {
+            console.log("Resetting analysis report initialization flag");
+            window.analysisReportInitialized = false;
+        }
+    });
+    
+    // Run initialization on page load
+    initializeAnalysisReport();
+    
+    // Ensure initialization runs after HTMX content swaps
+    document.addEventListener('htmx:afterSwap', function(event) {
+        console.log("HTMX afterSwap event detected");
+        if (document.getElementById('analysis-report-wrapper')) {
+            console.log("Found analysis-report-wrapper after swap, initializing");
+            window.analysisReportInitialized = false; // Reset flag for new content
+            setTimeout(initializeAnalysisReport, 10);
+        }
+    });
+    
+    // Also listen for HTMX load events
+    document.addEventListener('htmx:load', function(event) {
+        console.log("HTMX load event detected");
+        if (document.getElementById('analysis-report-wrapper')) {
+            console.log("Found analysis-report-wrapper on load, initializing");
+            setTimeout(initializeAnalysisReport, 10);
+        }
+    });
+    
+    function initializeAnalysisReport() {
+        try {
+            // Skip initialization if already done
+            if (window.analysisReportInitialized) {
+                console.log("Analysis report already initialized, skipping");
+                return;
+            }
+            
+            console.log("Analysis report initialization started");
+            
+            // Mark as initialized to prevent duplicate initialization
+            window.analysisReportInitialized = true;
+            
+            // Tab switching
+            const btnFormatted = document.getElementById('btn-formatted');
+            const btnRaw = document.getElementById('btn-raw');
+            const formattedContent = document.getElementById('formatted');
+            const rawContent = document.getElementById('raw');
+            
+            if (!btnFormatted || !btnRaw || !formattedContent || !rawContent) {
+                console.error("Tab elements not found:", {
+                    btnFormatted: !!btnFormatted,
+                    btnRaw: !!btnRaw,
+                    formattedContent: !!formattedContent,
+                    rawContent: !!rawContent
+                });
+            } else {
+                btnFormatted.addEventListener('click', function() {
+                    formattedContent.classList.add('active');
+                    rawContent.classList.remove('active');
+                    btnFormatted.classList.add('active');
+                    btnRaw.classList.remove('active');
+                });
+                
+                btnRaw.addEventListener('click', function() {
+                    rawContent.classList.add('active');
+                    formattedContent.classList.remove('active');
+                    btnRaw.classList.add('active');
+                    btnFormatted.classList.remove('active');
+                });
+            }
+            
+            // Copy button
+            const copyBtn = document.getElementById('copy-btn');
+            const rawContentEl = document.getElementById('raw-content');
+            
+            if (!copyBtn || !rawContentEl) {
+                console.error("Copy button elements not found:", {
+                    copyBtn: !!copyBtn,
+                    rawContentEl: !!rawContentEl
+                });
+            } else {
+                copyBtn.addEventListener('click', function() {
+                    const textToCopy = rawContentEl.innerText;
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        const originalIcon = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                        setTimeout(function() {
+                            copyBtn.innerHTML = originalIcon;
+                        }, 2000);
+                    }).catch(function(err) {
+                        console.error('Failed to copy: ', err);
+                    });
+                });
+            }
+            
+            // Print button
+            const printBtn = document.getElementById('print-btn');
+            if (!printBtn) {
+                console.error("Print button not found");
+            } else {
+                printBtn.addEventListener('click', function() {
+                    window.print();
+                });
+            }
+            
+            // API Details Toggle
+            const apiDetailsBtn = document.getElementById('toggle-api-details');
+            const detailsPanel = document.getElementById('api-details-panel');
+            
+            if (!apiDetailsBtn || !detailsPanel) {
+                console.error("API details elements not found:", {
+                    apiDetailsBtn: !!apiDetailsBtn,
+                    detailsPanel: !!detailsPanel
+                });
+            } else {
+                console.log("API details elements found, setting up toggle");
+                
+                // Force setting the display style to 'none' on initialization
+                detailsPanel.style.display = 'none';
+                
+                apiDetailsBtn.addEventListener('click', function() {
+                    console.log("API details button clicked, current display:", detailsPanel.style.display);
+                    // Changed comparison to include both cases: either style.display is 'none' or is empty/undefined
+                    if (detailsPanel.style.display === 'none' || !detailsPanel.style.display) {
+                        detailsPanel.style.display = 'block';
+                        apiDetailsBtn.innerHTML = '<i class="fas fa-times-circle"></i>';
+                        apiDetailsBtn.title = 'Hide API details';
+                        
+                        // Initialize syntax highlighting
+                        document.querySelectorAll('pre code').forEach((block) => {
+                            try {
+                                hljs.highlightElement(block);
+                            } catch (e) {
+                                console.error("Error highlighting code:", e);
+                            }
+                        });
+                    } else {
+                        detailsPanel.style.display = 'none';
+                        apiDetailsBtn.innerHTML = '<i class="fas fa-code"></i>';
+                        apiDetailsBtn.title = 'Show API details';
+                    }
+                });
+            }
+            
+            // Custom refresh modal handling
+            const refreshBtn = document.getElementById('refresh-btn');
+            const refreshModal = document.getElementById('refresh-modal');
+            const modalConfirm = document.getElementById('modal-confirm');
+            const modalCancel = document.getElementById('modal-cancel');
+            const modalConfirmation = document.getElementById('modal-confirmation');
+            const modalLoading = document.getElementById('modal-loading');
+
+            if (refreshBtn && refreshModal) {
+                // Open the modal when refresh button is clicked
+                refreshBtn.addEventListener('click', function() {
+                    refreshModal.classList.add('show');
+                    modalConfirmation.style.display = 'block';
+                    modalLoading.style.display = 'none';
+                });
+
+                // Close the modal when cancel is clicked
+                if (modalCancel) {
+                    modalCancel.addEventListener('click', function() {
+                        refreshModal.classList.remove('show');
+                    });
+                }
+
+                // Handle confirmation
+                if (modalConfirm) {
+                    modalConfirm.addEventListener('click', function() {
+                        // Hide confirmation, show loading
+                        modalConfirmation.style.display = 'none';
+                        modalLoading.style.display = 'block';
+                        
+                        // Get the article URL and model more reliably
+                        let articleUrl = '';
+                        let model = '';
+                        
+                        // Get the URL from the meta item with the source label
+                        const sourceMetaItem = Array.from(document.querySelectorAll('.meta-item')).find(item => 
+                            item.querySelector('.meta-label').textContent.includes('Source'));
+                        
+                        if (sourceMetaItem && sourceMetaItem.querySelector('a')) {
+                            articleUrl = sourceMetaItem.querySelector('a').href;
+                            console.log('Found article URL:', articleUrl);
+                        } else {
+                            console.error('Could not find article URL element');
+                            alert('Error: Could not determine article URL. Please try again.');
+                            refreshModal.classList.remove('show');
+                            return;
+                        }
+                        
+                        // Get the model from the meta item with the model label
+                        const modelMetaItem = Array.from(document.querySelectorAll('.meta-item')).find(item => 
+                            item.querySelector('.meta-label').textContent.includes('Model'));
+                        
+                        if (modelMetaItem) {
+                            model = modelMetaItem.querySelector('.meta-value').textContent.trim();
+                            console.log('Found model:', model);
+                        } else {
+                            console.error('Could not find model element');
+                            alert('Error: Could not determine model. Please try again.');
+                            refreshModal.classList.remove('show');
+                            return;
+                        }
+                        
+                        // Log the request we're about to make
+                        const requestUrl = `/analysis/refresh?url=${encodeURIComponent(articleUrl)}&model=${encodeURIComponent(model)}`;
+                        console.log('Sending refresh request to:', requestUrl);
+                        
+                        // Prepare the HTMX request
+                        const refreshRequest = new XMLHttpRequest();
+                        refreshRequest.open('GET', requestUrl);
+                        
+                        // Add all the headers that HTMX would normally add
+                        refreshRequest.setRequestHeader('HX-Request', 'true');
+                        refreshRequest.setRequestHeader('HX-Trigger', 'refresh-btn');
+                        refreshRequest.setRequestHeader('HX-Target', '#analysis-report-wrapper');
+                        refreshRequest.setRequestHeader('HX-Current-URL', window.location.href);
+                        
+                        // Monitor the request state
+                        refreshRequest.onreadystatechange = function() {
+                            console.log('Request state changed:', refreshRequest.readyState);
+                        };
+                        
+                        refreshRequest.onload = function() {
+                            console.log('Request completed with status:', refreshRequest.status);
+                            if (refreshRequest.status >= 200 && refreshRequest.status < 300) {
+                                // Replace the content with the response
+                                const wrapper = document.getElementById('analysis-report-wrapper');
+                                wrapper.outerHTML = refreshRequest.responseText;
+                                
+                                // Process HTMX attributes on the new content
+                                if (typeof htmx !== 'undefined') {
+                                    console.log('Processing HTMX on new content');
+                                    htmx.process(document.body);
+                                }
+                                
+                                // Reset initialization flag to ensure event listeners are reattached
+                                window.analysisReportInitialized = false;
+                                
+                                // Call initialization after a brief delay to ensure DOM is updated
+                                setTimeout(function() {
+                                    console.log('Reinitializing report after refresh');
+                                    initializeAnalysisReport();
+                                }, 50);
+                                
+                                // Close the modal
+                                refreshModal.classList.remove('show');
+                            } else {
+                                console.error('Refresh request failed:', refreshRequest.status, refreshRequest.statusText);
+                                console.error('Response:', refreshRequest.responseText);
+                                alert('Failed to refresh the analysis. Please try again later.');
+                                refreshModal.classList.remove('show');
+                            }
+                        };
+                        
+                        refreshRequest.onerror = function() {
+                            console.error('Refresh request network error');
+                            alert('Failed to refresh the analysis. Please check your network connection and try again.');
+                            refreshModal.classList.remove('show');
+                        };
+                        
+                        refreshRequest.ontimeout = function() {
+                            console.error('Refresh request timed out');
+                            alert('The refresh request timed out. The server may be busy, please try again later.');
+                            refreshModal.classList.remove('show');
+                        };
+                        
+                        // Set a longer timeout for the request (60 seconds)
+                        refreshRequest.timeout = 60000;
+                        
+                        // Send the request
+                        refreshRequest.send();
+                    });
+                }
+            }
+            
+            console.log("Analysis report initialization completed");
+        } catch (error) {
+            console.error("Error initializing analysis report:", error);
+        }
+    }
+</script>
+
+<style>
+    /* Add a prominent cached banner */
+    .cached-banner {
+        background-color: rgba(246, 173, 85, 0.2);
+        color: #f6ad55;
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: 8px 8px 0 0;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: -1px;
+        flex-wrap: wrap;
+    }
+    
+    /* Add a refreshed banner */
+    .refreshed-banner {
+        background-color: rgba(72, 187, 120, 0.2);
+        color: #48bb78;
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: 8px 8px 0 0;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: -1px;
+        flex-wrap: wrap;
+    }
+    
+    .banner-note {
+        display: block;
+        width: 100%;
+        font-size: 0.8rem;
+        font-weight: 400;
+        opacity: 0.9;
+        margin-top: 0.2rem;
+    }
+    
+    /* Visual feedback for copy button */
+    .btn-icon.copied {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    
+    /* Cached result styling */
+    .cached-result {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #f6ad55;
+    }
+    
+    /* The rest of the styles remain the same */
+    .card.analysis-result {
+        background-color: #1e2b3c;
+        color: #f0f2f5;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        margin-bottom: 2rem;
+    }
+    
+    .card-header {
+        background-color: #2a3b50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .card-title {
+        margin: 0;
+        color: #ffffff;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .card-title i {
+        margin-right: 0.5rem;
+        color: #4ea5ff;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .result-meta {
+        flex: 1;
+    }
+    
+    .meta-item {
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .meta-label {
+        font-weight: 600;
+        margin-right: 0.5rem;
+        color: #8c9db5;
+        min-width: 60px;
+    }
+    
+    .meta-value {
+        color: #e0e6ed;
+    }
+    
+    .meta-value a {
+        color: #4ea5ff;
+        text-decoration: none;
+    }
+    
+    .meta-value a:hover {
+        text-decoration: underline;
+    }
+    
+    .result-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-icon {
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #8c9db5;
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-icon:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+    }
+    
+    .disclaimer-alert {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-left: 4px solid #ffc107;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .disclaimer-alert i {
+        color: #ffc107;
+        margin-right: 0.75rem;
+        font-size: 1.25rem;
+    }
+    
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .tab-button {
+        background: none;
+        border: none;
+        color: #8c9db5;
+        padding: 0.75rem 1.25rem;
+        cursor: pointer;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .tab-button:hover {
+        color: #e0e6ed;
+    }
+    
+    .tab-button.active {
+        color: #4ea5ff;
+        border-bottom-color: #4ea5ff;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .analysis-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .analysis-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .analysis-section h3 {
+        color: #4ea5ff;
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
+    .source-evaluation {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.25rem;
+        border-radius: 8px;
+    }
+    
+    .source-eval-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.25rem;
+    }
+    
+    .evaluation-item {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 1rem;
+        border-radius: 6px;
+    }
+    
+    .source-type {
+        grid-column: 1 / -1;
+    }
+    
+    .eval-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .eval-label {
+        font-weight: 600;
+        color: #8c9db5;
+        margin-right: auto;
+    }
+    
+    .eval-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .eval-badge.high {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+    
+    .eval-badge.medium {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+    
+    .eval-badge.low {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+    }
+    
+    .source-type-value {
+        padding: 0.5rem;
+        background: rgba(78, 165, 255, 0.1);
+        color: #e0e6ed;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: 500;
+    }
+    
+    .eval-justification {
+        margin: 0;
+        color: #e0e6ed;
+        line-height: 1.5;
+    }
+    
+    .mitre-techniques {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.5rem;
+    }
+    
+    .technique-item {
+        background: rgba(78, 165, 255, 0.1);
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        display: flex;
+        align-items: flex-start;
+        width: 100%;
+        border: 1px solid rgba(78, 165, 255, 0.2);
+    }
+    
+    .technique-id {
+        background: #4ea5ff;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        margin-right: 0.75rem;
+        font-family: monospace;
+        white-space: nowrap;
+    }
+    
+    .technique-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex: 1;
+    }
+    
+    .technique-name {
+        color: #e0e6ed;
+        font-weight: 500;
+    }
+    
+    .technique-description {
+        color: #a0aec0;
+        font-size: 0.875rem;
+        margin: 0.25rem 0 0 0;
+        line-height: 1.4;
+    }
+    
+    .insights-list {
+        padding-left: 1.5rem;
+        margin: 0.5rem 0;
+        color: #e0e6ed;
+    }
+    
+    .insights-list li {
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
+        position: relative;
+        padding-left: 0.5rem;
+    }
+    
+    .insights-list li:last-child {
+        margin-bottom: 0;
+    }
+    
+    .insights-list li::marker {
+        color: #4ea5ff;
+    }
+    
+    .relevance-score {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.25rem;
+        border-radius: 8px;
+    }
+    
+    .score-display {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .score-label {
+        font-weight: 600;
+        color: #8c9db5;
+        margin-right: 0.75rem;
+    }
+    
+    .score-value {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .score-value.score-1 {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+    }
+    
+    .score-value.score-2 {
+        background-color: rgba(253, 126, 20, 0.2);
+        color: #fd7e14;
+    }
+    
+    .score-value.score-3 {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+    
+    .score-value.score-4 {
+        background-color: rgba(23, 162, 184, 0.2);
+        color: #17a2b8;
+    }
+    
+    .score-value.score-5 {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+    
+    .score-justification {
+        margin: 0;
+        color: #e0e6ed;
+        line-height: 1.6;
+    }
+    
+    /* Indicators of Compromise Styles */
+    .indicators-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .indicator-count {
+        font-size: 0.9rem;
+        color: #8c9db5;
+        background-color: rgba(78, 165, 255, 0.1);
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+    }
+    
+    .indicators-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .indicator-category {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .category-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #4ea5ff;
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .indicator-types {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .indicator-type {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+        padding: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .indicator-type-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .indicator-type-name {
+        font-weight: 600;
+        color: #e0e6ed;
+    }
+    
+    .indicator-type-count {
+        background-color: rgba(78, 165, 255, 0.2);
+        color: #4ea5ff;
+        padding: 0.1rem 0.5rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .indicator-values {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-height: 200px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+    
+    .indicator-value {
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        color: #a0aec0;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.25rem 0.5rem;
+        border-radius: 3px;
+        word-break: break-all;
+    }
+    
+    /* Critical Infrastructure Sectors Grid Styles */
+    .sectors-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .sector-item {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sector-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .sector-name {
+        font-weight: 600;
+        color: #e0e6ed;
+    }
+    
+    .sector-score {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .sector-justification {
+        margin: 0.5rem 0 0 0;
+        color: #a0aec0;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .raw-content {
+        white-space: pre-wrap;
+        font-family: "Monaco", "Menlo", "Consolas", monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1.25rem;
+        border-radius: 8px;
+        color: #e0e6ed;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    /* API Details Styles */
+    .api-details-container {
+        margin: 15px 0;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+    
+    .api-details-header {
+        background-color: var(--bg-tertiary);
+        padding: 10px 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .api-details-header h3 {
+        margin: 0;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-primary);
+    }
+    
+    .api-details-subtitle {
+        font-size: 12px;
+        color: var(--text-secondary);
+        display: block;
+        margin-top: 3px;
+    }
+    
+    .api-details-content {
+        padding: 15px;
+    }
+    
+    .api-section {
+        margin-bottom: 20px;
+    }
+    
+    .api-section h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: var(--text-primary);
+    }
+    
+    .api-code {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        padding: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+    }
+    
+    .api-code pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .api-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .api-metric {
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 8px 12px;
+    }
+    
+    .metric-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+    }
+    
+    .metric-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    
+    .api-completion h5 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--text-primary);
+    }
+    
+    .api-code-preview {
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 12px;
+        white-space: pre-wrap;
+        font-family: 'Courier New', monospace;
+        color: var(--text-secondary);
+    }
+    
+    /* API Documentation */
+    .hljs {
+        background: transparent !important;
+    }
+    
+    /* HTMX Indicators */
+    .htmx-indicator {
+        display: none;
+    }
+    
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    
+    .htmx-request.btn-icon .fas:not(.fa-spinner) {
+        display: none;
+    }
+    
+    #refresh-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    /* Make refresh button more prominent */
+    .refresh-btn {
+        background-color: rgba(72, 187, 120, 0.15);
+        border-color: rgba(72, 187, 120, 0.4);
+        color: #48bb78;
+        font-weight: 500;
+        position: relative;
+    }
+    
+    .refresh-btn:hover {
+        background-color: rgba(72, 187, 120, 0.25);
+        color: #48bb78;
+    }
+    
+    /* Disabled button styling */
+    button[disabled], button.htmx-request {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* Custom modal styles */
+    .custom-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .custom-modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background-color: #1e2b3c;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        width: 90%;
+        max-width: 500px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-section {
+        padding: 1.5rem;
+    }
+
+    .modal-section h3 {
+        margin-top: 0;
+        color: #4ea5ff;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.25rem;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .modal-btn {
+        padding: 0.5rem 1.25rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .cancel-btn {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #8c9db5;
+    }
+
+    .cancel-btn:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .confirm-btn {
+        background-color: #4ea5ff;
+        color: white;
+    }
+
+    .confirm-btn:hover {
+        background-color: #3b94ee;
+    }
+
+    .loading-animation {
+        font-size: 2.5rem;
+        color: #4ea5ff;
+        text-align: center;
+        margin: 1.5rem 0;
+    }
+
+    .processing-note {
+        font-size: 0.875rem;
+        color: #8c9db5;
+        margin-top: 0.5rem;
+        text-align: center;
+    }
+
+    /* Loading animation section */
+    #modal-loading {
+        text-align: center;
+    }
+
+    #modal-loading p {
+        margin: 0.75rem 0;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .custom-modal.show {
+        animation: fadeIn 0.3s ease-in;
+    }
+</style> 

@@ -1,0 +1,35 @@
+<div class="recent-list" id="recent-analyses-list">
+    {% for analysis in recent_analyses %}
+    <div class="recent-item">
+        <div class="recent-content">
+            <h3 class="recent-title">
+                <a href="{{ analysis['url'] }}" target="_blank" class="article-link">
+                    {{ analysis['title'] if analysis['title'] else analysis['url']|truncate(70) }}
+                </a>
+            </h3>
+            <div class="recent-meta">
+                <span class="recent-date">
+                    <i class="far fa-clock"></i>
+                    {% if analysis['created_at'] is string %}
+                        {{ analysis['created_at'] }}
+                    {% else %}
+                        {{ analysis['created_at'].strftime('%B %d, %Y') }}
+                    {% endif %}
+                </span>
+                <span class="recent-model">
+                    <i class="fas fa-robot"></i>
+                    {{ analysis['model'] }}
+                </span>
+            </div>
+        </div>
+        <button class="view-analysis-btn" 
+                hx-get="/analysis/result?url={{ analysis['url'] }}" 
+                hx-target="#analysis-result-container"
+                hx-swap="innerHTML"
+                hx-indicator="#loading-indicator">
+            <i class="fas fa-file-alt"></i>
+            View Report
+        </button>
+    </div>
+    {% endfor %}
+</div> 

@@ -1,0 +1,49 @@
+<div class="card error-card" id="error-container">
+    <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-exclamation-circle"></i> Error</h2>
+        <button class="close-btn" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="message-content">
+                <h3>Analysis Error</h3>
+                <p>{{ error }}</p>
+            </div>
+        </div>
+        
+        {% if details %}
+        <div class="error-details-container">
+            <button class="show-details-btn" onclick="toggleErrorDetails()">
+                <i class="fas fa-code"></i> Show technical details
+            </button>
+            <div class="error-details" id="error-details" style="display: none;">
+                <pre>{{ details }}</pre>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="error-actions">
+            <button class="btn btn-primary" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
+                <i class="fas fa-arrow-left"></i> Back to Form
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleErrorDetails() {
+        const details = document.getElementById('error-details');
+        const button = document.querySelector('.show-details-btn');
+        
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            button.innerHTML = '<i class="fas fa-code"></i> Hide technical details';
+        } else {
+            details.style.display = 'none';
+            button.innerHTML = '<i class="fas fa-code"></i> Show technical details';
+        }
+    }
+</script> 
