@@ -1,6 +1,6 @@
 # ThreatInsight Analyzer 
-[![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/yourusername/threatinsight-analyzer)
-[![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/yourusername/threatinsight-analyzer)
+[![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
+[![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE.md)
 
 A web-based tool that uses AI to aid in rapid summarization and analysis of cybersecurity articles to generate structured threat intelligence insights.
@@ -10,14 +10,6 @@ A web-based tool that uses AI to aid in rapid summarization and analysis of cybe
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
 
 <div align="center">
-  <a href="#features">
-    <img src="https://img.shields.io/badge/AI_Powered-Analysis-8B7355?style=for-the-badge" alt="AI Powered" />
-  </a>
-  &nbsp;&nbsp;
-  <a href="#available-models">
-    <img src="https://img.shields.io/badge/OpenAI-Integration-5F9EA0?style=for-the-badge" alt="OpenAI Integration" />
-  </a>
-  &nbsp;&nbsp;
   <a href="#development-status">
     <img src="https://img.shields.io/badge/Status-Active_Development-BC8F8F?style=for-the-badge" alt="Active Development" />
   </a>
@@ -25,11 +17,8 @@ A web-based tool that uses AI to aid in rapid summarization and analysis of cybe
 
 This project is in active development. Features are being implemented incrementally, and the codebase is evolving. Known issues are documented in the [Known Issues](Known%20Issues.md) file.
 
-## Release Information
-
-- **Version:** 1.0.0
-- **Release Date:** 2024
-- **Developed with:** AI-assisted coding (Claude, GPT-4)
+## Technology Overview
+- **Release Date:** March 22, 2025
 
 ### Languages
 <div align="center">
