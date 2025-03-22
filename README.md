@@ -59,6 +59,12 @@ This project is in active development. Features are being implemented incrementa
 - Analysis caching for quick retrieval
 - Support for multiple AI models with different capabilities
 
+## Interface Preview
+
+<div align="center">
+  <img src="static/images/FrontEndExample.png" alt="ThreatInsight Analyzer Interface" width="800">
+</div>
+
 ## Project Structure
 
 ```
