@@ -5,6 +5,12 @@
 
 A web-based tool that uses AI to aid in rapid summarization and analysis of cybersecurity articles to generate structured threat intelligence insights.
 
+<div align="center">
+  <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
+  </a>
+</div>
+
 ## Current Status
 
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
@@ -182,7 +188,13 @@ Open `http://localhost:8000` in your browser
 
 ## Development Status
 
-This project is a work-in-progress, and many features are still being refined. The code is shared in its current state to demonstrate the concept and gather feedback. Please review the Known Issues document for a list of identified issues.
+This project is a work-in-progress, and many features are still being refined. The code is shared in its current state to demonstrate the concept and gather feedback. Please review the Known Issues document for a list of identified issues. If you like this project, consider buying me a coffee!
+
+<div align="center">
+  <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
+  </a>
+</div>
 
 ## Security Notes
 
