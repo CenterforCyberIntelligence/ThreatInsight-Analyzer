@@ -263,6 +263,10 @@ def extract_by_text_density(soup: BeautifulSoup, verbose: bool = True) -> Option
 
 def clean_extracted_text(text: str) -> str:
     """Clean up extracted text."""
+    # Handle None input
+    if text is None:
+        return ""
+        
     # Clean up whitespace
     lines = (line.strip() for line in text.splitlines())
     text = '\n'.join(line for line in lines if line)

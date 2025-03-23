@@ -3,6 +3,7 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 import json
 import logging
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -85,6 +86,34 @@ class Config:
                 "output": 30.0
             }
         }
+        
+    @staticmethod
+    def normalize_model_id(model_id: str) -> str:
+        """
+        Normalize model ID by removing version information.
+        This helps in matching model IDs with different versions to their base models.
+        
+        For example:
+        - "gpt-4o-2024-08-06" -> "gpt-4o"
+        - "gpt-4-turbo-0125" -> "gpt-4-turbo"
+        """
+        # Define model aliases to map specific versions to their base models
+        model_aliases = {
+            # Map any specific versioned models to base models
+            "gpt-4o-2024-08-06": "gpt-4o",
+            "gpt-4o-mini-2024-07-18": "gpt-4o-mini",
+            "gpt-4-turbo-2024-04-09": "gpt-4-turbo"
+        }
+        
+        # Check if there's a direct alias mapping
+        if model_id in model_aliases:
+            return model_aliases[model_id]
+        
+        # For standard versioned models, try to extract the base model
+        # Strip out date-based version identifiers like -2024-08-06 or -0125
+        base_model = re.sub(r'-(20\d{2}-\d{2}-\d{2}|\d{4})$', '', model_id)
+        
+        return base_model
         
     @staticmethod
     def get_default_temperature() -> float:

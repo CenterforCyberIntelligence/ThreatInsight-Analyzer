@@ -226,6 +226,86 @@ body::before {
     background-color: var(--primary-hover);
 }
 
+/* Export Dropdown Menu - Added for Analysis Export Feature */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    position: relative;
+}
+
+.dropdown-toggle::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 0.255em;
+    vertical-align: 0.255em;
+    border-top: 0.3em solid;
+    border-right: 0.3em solid transparent;
+    border-bottom: 0;
+    border-left: 0.3em solid transparent;
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    opacity: 0.5;
+    font-size: 8px;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    display: none;
+    min-width: 10rem;
+    padding: 0.5rem 0;
+    margin: 0.125rem 0 0;
+    background-color: var(--card-bg);
+    background-clip: padding-box;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 1.5rem;
+    clear: both;
+    font-weight: 400;
+    color: var(--text-primary);
+    text-align: inherit;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.dropdown-item i {
+    margin-right: 0.5rem;
+    color: var(--text-muted);
+    width: 1rem;
+    text-align: center;
+}
+
+.dropdown-item:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
 /* Analysis Status */
 .analysis-status {
     background: rgba(15, 23, 42, 0.4);

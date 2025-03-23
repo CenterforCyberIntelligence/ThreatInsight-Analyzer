@@ -78,6 +78,28 @@
                         <i class="fas fa-sync-alt"></i>
                     </button>
                     {% endif %}
+                    
+                    <!-- Export Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn-icon dropdown-toggle" id="export-dropdown-btn" title="Export analysis">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <div class="dropdown-menu" id="export-dropdown-menu">
+                            <a href="/export/json?url={{ url | urlencode }}" class="dropdown-item" download>
+                                <i class="fas fa-file-code"></i> JSON
+                            </a>
+                            <a href="/export/csv?url={{ url | urlencode }}" class="dropdown-item" download>
+                                <i class="fas fa-file-csv"></i> CSV
+                            </a>
+                            <a href="/export/markdown?url={{ url | urlencode }}" class="dropdown-item" download>
+                                <i class="fas fa-file-alt"></i> Markdown
+                            </a>
+                            <a href="/export/pdf?url={{ url | urlencode }}" class="dropdown-item" download>
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                        </div>
+                    </div>
+                    
                     {% if api_details %}
                     <button class="btn-icon" id="toggle-api-details" title="Show API details">
                         <i class="fas fa-code"></i>
@@ -452,7 +474,7 @@
                                                     {% if '.' in value %}
                                                         {% set id_parts = value.split('.') %}
                                                         {% set main_id = id_parts[0] %}
-                                                        {% set sub_id = id_parts[1]|string|zfill(3) %}
+                                                        {% set sub_id = id_parts[1]|zfill(3) %}
                                                         <a href="https://attack.mitre.org/techniques/{{ main_id }}/{{ sub_id }}/" target="_blank" class="mitre-id">{{ value }}</a>
                                                     {% else %}
                                                         <a href="https://attack.mitre.org/techniques/{{ value }}/" target="_blank" class="mitre-id">{{ value }}</a>
@@ -650,6 +672,43 @@
                         apiDetailsBtn.innerHTML = '<i class="fas fa-code"></i>';
                         apiDetailsBtn.title = 'Show API details';
                     }
+                });
+            }
+            
+            // Export functionality - toggle dropdown
+            const exportBtn = document.getElementById('export-dropdown-btn');
+            const exportMenu = document.getElementById('export-dropdown-menu');
+            
+            if (!exportBtn || !exportMenu) {
+                console.error("Export dropdown elements not found:", {
+                    exportBtn: !!exportBtn,
+                    exportMenu: !!exportMenu
+                });
+            } else {
+                console.log("Export dropdown elements found, setting up toggle");
+                
+                // Handle keyboard accessibility
+                exportBtn.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        exportMenu.classList.toggle('show');
+                    }
+                });
+                
+                // Allow clicking outside to close the dropdown
+                document.addEventListener('click', function(e) {
+                    if (!exportBtn.contains(e.target) && !exportMenu.contains(e.target)) {
+                        exportMenu.classList.remove('show');
+                    }
+                });
+                
+                // Add click handlers for export items
+                const exportItems = exportMenu.querySelectorAll('.dropdown-item');
+                exportItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        // Close the dropdown after clicking an item
+                        exportMenu.classList.remove('show');
+                    });
                 });
             }
             

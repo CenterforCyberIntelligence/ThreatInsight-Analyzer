@@ -3,7 +3,7 @@
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-title">Total Tokens Used</div>
-            <div class="stat-value">{{ token_stats.overall.total_tokens }}</div>
+            <div class="stat-value">{{ stats.overall.total_tokens }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-title">Articles Analyzed</div>
@@ -13,14 +13,14 @@
             <div class="stat-title">Total Cost</div>
             <div class="stat-value">$
                 {% set total_cost = 0 %}
-                {% if 'gpt-4o-mini' in token_stats.models %}
-                    {% set total_cost = total_cost + (token_stats.models['gpt-4o-mini'].regular_input * model_prices['gpt-4o-mini'].input + token_stats.models['gpt-4o-mini'].cached_input * model_prices['gpt-4o-mini'].cached + token_stats.models['gpt-4o-mini'].total_output * model_prices['gpt-4o-mini'].output) / 1000000 %}
+                {% if 'gpt-4o-mini' in stats.models %}
+                    {% set total_cost = total_cost + (stats.models['gpt-4o-mini'].regular_input * model_prices['gpt-4o-mini'].input + stats.models['gpt-4o-mini'].cached_input * model_prices['gpt-4o-mini'].cached + stats.models['gpt-4o-mini'].total_output * model_prices['gpt-4o-mini'].output) / 1000000 %}
                 {% endif %}
-                {% if 'gpt-4o' in token_stats.models %}
-                    {% set total_cost = total_cost + (token_stats.models['gpt-4o'].regular_input * model_prices['gpt-4o'].input + token_stats.models['gpt-4o'].cached_input * model_prices['gpt-4o'].cached + token_stats.models['gpt-4o'].total_output * model_prices['gpt-4o'].output) / 1000000 %}
+                {% if 'gpt-4o' in stats.models %}
+                    {% set total_cost = total_cost + (stats.models['gpt-4o'].regular_input * model_prices['gpt-4o'].input + stats.models['gpt-4o'].cached_input * model_prices['gpt-4o'].cached + stats.models['gpt-4o'].total_output * model_prices['gpt-4o'].output) / 1000000 %}
                 {% endif %}
-                {% if 'gpt-4-turbo' in token_stats.models %}
-                    {% set total_cost = total_cost + (token_stats.models['gpt-4-turbo'].regular_input * model_prices['gpt-4-turbo'].input + token_stats.models['gpt-4-turbo'].cached_input * model_prices['gpt-4-turbo'].cached + token_stats.models['gpt-4-turbo'].total_output * model_prices['gpt-4-turbo'].output) / 1000000 %}
+                {% if 'gpt-4-turbo' in stats.models %}
+                    {% set total_cost = total_cost + (stats.models['gpt-4-turbo'].regular_input * model_prices['gpt-4-turbo'].input + stats.models['gpt-4-turbo'].cached_input * model_prices['gpt-4-turbo'].cached + stats.models['gpt-4-turbo'].total_output * model_prices['gpt-4-turbo'].output) / 1000000 %}
                 {% endif %}
                 {{ total_cost | round(4) }}
             </div>
@@ -33,15 +33,15 @@
         <div class="token-grid">
             <div class="token-type">
                 <span class="type-label">Input Tokens</span>
-                <span class="type-value">{{ token_stats.overall.total_input }}</span>
+                <span class="type-value">{{ stats.overall.total_input }}</span>
             </div>
             <div class="token-type">
                 <span class="type-label">Output Tokens</span>
-                <span class="type-value">{{ token_stats.overall.total_output }}</span>
+                <span class="type-value">{{ stats.overall.total_output }}</span>
             </div>
             <div class="token-type">
                 <span class="type-label">Cached Tokens</span>
-                <span class="type-value">{{ token_stats.overall.cached_input }}</span>
+                <span class="type-value">{{ stats.overall.cached_input }}</span>
             </div>
         </div>
     </div>
@@ -50,7 +50,7 @@
     <div class="model-usage">
         <h3>Usage by Model</h3>
         <div class="model-grid">
-            {% for model_id, stats in token_stats.models.items() %}
+            {% for model_id, model_stats in stats.models.items() %}
             <div class="model-card">
                 <div class="model-header">
                     <h4>{{ model_id }}</h4>
@@ -58,19 +58,19 @@
                 <div class="model-stats">
                     <div class="model-stat">
                         <span>Regular Input</span>
-                        <span>{{ stats.regular_input }}</span>
+                        <span>{{ model_stats.regular_input }}</span>
                     </div>
                     <div class="model-stat">
                         <span>Cached Input</span>
-                        <span>{{ stats.cached_input }}</span>
+                        <span>{{ model_stats.cached_input }}</span>
                     </div>
                     <div class="model-stat">
                         <span>Output</span>
-                        <span>{{ stats.total_output }}</span>
+                        <span>{{ model_stats.total_output }}</span>
                     </div>
                     <div class="model-cost">
                         <span>Cost</span>
-                        <span>${{ ((stats.regular_input * model_prices[model_id].input + stats.cached_input * model_prices[model_id].cached + stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}</span>
+                        <span>${{ ((model_stats.regular_input * model_prices[model_id].input + model_stats.cached_input * model_prices[model_id].cached + model_stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}</span>
                     </div>
                 </div>
             </div>

@@ -3,7 +3,9 @@ import sys
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
+import traceback
+from flask import Request
 
 # Import configuration (avoid circular imports by importing here)
 try:
@@ -114,4 +116,112 @@ def error(message: str) -> None:
 
 def critical(message: str) -> None:
     """Log a critical message."""
-    logger.critical(message) 
+    logger.critical(message)
+
+# Functions needed for tests
+def setup_logging(
+    logger_name: str, 
+    log_file: str, 
+    level: Optional[int] = None, 
+    max_bytes: int = 10485760,  # 10MB
+    backup_count: int = 5
+) -> logging.Logger:
+    """
+    Set up a logger with file and console handlers.
+    
+    Args:
+        logger_name: Name of the logger
+        log_file: Path to log file
+        level: Log level (defaults to INFO or environment variable LOG_LEVEL)
+        max_bytes: Maximum log file size before rotation
+        backup_count: Number of backup files to keep
+        
+    Returns:
+        Configured logger instance
+    """
+    # Create logger
+    custom_logger = logging.getLogger(logger_name)
+    
+    # Set log level from environment variable or default to INFO
+    if level is None:
+        log_level_name = os.environ.get('LOG_LEVEL', 'INFO').upper()
+        level = getattr(logging, log_level_name, logging.INFO)
+    
+    custom_logger.setLevel(level)
+    
+    # Create formatter
+    custom_format = os.environ.get(
+        'LOG_FORMAT', 
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    custom_formatter = logging.Formatter(custom_format)
+    
+    # Create directory for log file if it doesn't exist
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    # Add file handler with rotation
+    file_handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=max_bytes, 
+        backupCount=backup_count
+    )
+    file_handler.setFormatter(custom_formatter)
+    custom_logger.addHandler(file_handler)
+    
+    # Add console handler for development
+    if os.environ.get('FLASK_ENV') == 'development':
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(custom_formatter)
+        custom_logger.addHandler(console_handler)
+    
+    return custom_logger
+
+def get_logger(module_name: str) -> logging.Logger:
+    """
+    Get a logger for a module.
+    
+    Args:
+        module_name: Name of the module
+        
+    Returns:
+        Logger instance
+    """
+    logger_name = f"app.{module_name}"
+    return logging.getLogger(logger_name)
+
+def log_request(req: Request) -> None:
+    """
+    Log an incoming HTTP request.
+    
+    Args:
+        req: Flask request object
+    """
+    req_logger = get_logger('requests')
+    req_logger.info(
+        f"Request: {req.method} {req.path} - "
+        f"IP: {req.remote_addr} - "
+        f"User-Agent: {req.user_agent.string}"
+    )
+
+def log_exception(exception: Exception, module: str) -> None:
+    """
+    Log an exception with traceback.
+    
+    Args:
+        exception: Exception object
+        module: Module name where the exception occurred
+    """
+    exc_logger = get_logger(module)
+    
+    # Get exception details
+    exc_type = type(exception).__name__
+    exc_msg = str(exception)
+    exc_traceback = traceback.format_exc()
+    
+    # Log the exception
+    exc_logger.exception(
+        f"Exception occurred in {module}: {exc_type}: {exc_msg}\n"
+        f"Traceback:\n{exc_traceback}"
+    ) 

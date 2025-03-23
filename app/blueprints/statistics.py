@@ -3,40 +3,49 @@ from app.models.database import get_token_usage_stats, get_recent_analyses
 from app.config.config import Config
 from datetime import datetime
 import json
+from typing import Dict, Any
 
 stats_bp = Blueprint('statistics', __name__)
 
 @stats_bp.route('/statistics')
 def statistics():
-    # Get token usage stats
-    token_stats = get_token_usage_stats()
+    """Route to display statistics about the app usage."""
     
-    # Get recent analyses
-    recent_analyses = get_recent_analyses(limit=None)
+    # Get token usage stats from database
+    token_usage_stats = get_token_usage_stats()
     
-    # Format dates
-    for analysis in recent_analyses:
-        if isinstance(analysis['created_at'], str):
-            try:
-                # Try to parse the date string
-                analysis['created_at'] = datetime.fromisoformat(analysis['created_at'].replace('Z', '+00:00'))
-            except (ValueError, TypeError):
-                # If parsing fails, leave as is
-                pass
+    # Get list of recent analyses from database
+    recent_analyses = get_recent_analyses(limit=5)
     
-    # Get model prices from config
+    # Get model prices
     model_prices = Config.get_model_prices()
     
-    return render_template('statistics.html', 
-                           token_stats=token_stats, 
-                           recent_analyses=recent_analyses,
-                           model_prices=model_prices)
+    # Create a normalized model prices dictionary for the template
+    normalized_model_prices = {}
+    for analysis in recent_analyses:
+        if analysis.get('model_id'):
+            # Normalize the model ID to handle version differences
+            normalized_id = Config.normalize_model_id(analysis['model_id'])
+            # Map the original model ID to its normalized pricing
+            if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
+                normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+    
+    # Merge normalized prices with standard prices
+    template_model_prices = {**model_prices, **normalized_model_prices}
+    
+    return render_template(
+        'statistics.html',
+        stats=token_usage_stats,
+        token_stats=token_usage_stats,  # Add token_stats as well for compatibility with the template
+        recent_analyses=recent_analyses,
+        model_prices=template_model_prices
+    )
 
 @stats_bp.route('/statistics/refresh')
 def refresh_statistics():
     """HTMX endpoint to refresh statistics content"""
     # Get token usage stats
-    token_stats = get_token_usage_stats()
+    token_usage_stats = get_token_usage_stats()
     
     # Get recent analyses
     recent_analyses = get_recent_analyses(limit=None)
@@ -51,11 +60,26 @@ def refresh_statistics():
                 # If parsing fails, leave as is
                 pass
     
-    # Get model prices from config
+    # Get model prices
     model_prices = Config.get_model_prices()
     
+    # Create a normalized model prices dictionary for the template
+    normalized_model_prices = {}
+    for analysis in recent_analyses:
+        if analysis.get('model_id'):
+            # Normalize the model ID to handle version differences
+            normalized_id = Config.normalize_model_id(analysis['model_id'])
+            # Map the original model ID to its normalized pricing
+            if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
+                normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+    
+    # Merge normalized prices with standard prices
+    template_model_prices = {**model_prices, **normalized_model_prices}
+    
     # Render only the stats content without the full page
-    return render_template('partials/statistics_content.html', 
-                           token_stats=token_stats, 
-                           recent_analyses=recent_analyses,
-                           model_prices=model_prices) 
+    return render_template(
+        'partials/statistics_content.html',
+        stats=token_usage_stats,
+        recent_analyses=recent_analyses,
+        model_prices=template_model_prices
+    ) 

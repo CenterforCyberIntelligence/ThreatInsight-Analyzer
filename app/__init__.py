@@ -35,6 +35,15 @@ def create_app(config_class=Config):
     from app.models.database import init_db
     init_db()
     
+    # Register custom Jinja2 filters
+    @app.template_filter('zfill')
+    def jinja2_zfill(value, width):
+        """
+        Custom filter that mimics Python's string.zfill().
+        Pads a string on the left with zeros to fill the specified width.
+        """
+        return str(value).zfill(width)
+    
     # Register utility context processors
     @app.context_processor
     def utility_processor():

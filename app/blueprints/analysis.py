@@ -1,17 +1,84 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, send_file, abort
 import time
 import os
 import re
 import traceback
-from typing import Dict, Any
+import validators
+import html
+from typing import Dict, Any, Optional, Tuple, List
+from urllib.parse import urlparse
 
-from app.utilities.logger import print_status
 from app.utilities.article_extractor import extract_article_content
 from app.utilities.article_analyzer import analyze_article, parse_analysis_response
+from app.utilities.indicator_extractor import extract_indicators, format_indicators_for_display
+from app.utilities.export import (
+    export_analysis_as_json, export_analysis_as_csv, 
+    export_analysis_as_markdown, export_analysis_as_pdf
+)
+from app.utilities.logger import get_logger, print_status
 from app.models.database import store_analysis, update_analysis, get_analysis_by_url, track_token_usage, store_indicators, get_indicators_by_url
 from app.config.config import Config
 
 analysis_bp = Blueprint('analysis', __name__)
+
+# List of allowed top-level domains (expand as needed)
+ALLOWED_TLDS = [
+    'com', 'org', 'net', 'gov', 'edu', 'mil', 'int', 'io', 'co',
+    'uk', 'ca', 'au', 'eu', 'de', 'fr', 'jp', 'ru', 'cn', 'in',
+    'br', 'mx', 'za', 'ch', 'se', 'no', 'dk', 'fi', 'nl', 'be'
+]
+
+# List of blocked domains (e.g., known malicious sites)
+BLOCKED_DOMAINS = [
+    'example-malicious-site.com',
+    'known-phishing-domain.net'
+    # Add more as needed
+]
+
+def validate_url(url: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate URL for security and formatting
+    
+    Args:
+        url: The URL to validate
+        
+    Returns:
+        Tuple containing:
+            - Boolean indicating if URL is valid
+            - Error message if validation failed, None if validation succeeded
+    """
+    if not url:
+        return False, "URL is required"
+    
+    # Basic sanitization - strip whitespace and encode HTML entities
+    url = url.strip()
+    
+    # Basic URL validation using validators package
+    if not validators.url(url):
+        return False, "Invalid URL format. Please provide a valid URL including the protocol (http:// or https://)"
+    
+    # Parse the URL to get components
+    parsed_url = urlparse(url)
+    
+    # Protocol check - only allow HTTP and HTTPS
+    if parsed_url.scheme not in ['http', 'https']:
+        return False, "Only HTTP and HTTPS protocols are supported"
+    
+    # Extract domain and TLD
+    domain = parsed_url.netloc.lower()
+    
+    # Check for blocked domains
+    if any(blocked in domain for blocked in BLOCKED_DOMAINS):
+        return False, "This domain is not allowed"
+    
+    # TLD validation
+    domain_parts = domain.split('.')
+    if len(domain_parts) >= 2:
+        tld = domain_parts[-1]
+        if tld not in ALLOWED_TLDS:
+            return False, f"Domain TLD '.{tld}' is not in the allowed list"
+    
+    return True, None
 
 @analysis_bp.route('/analyze', methods=['POST'])
 def analyze():
@@ -20,13 +87,17 @@ def analyze():
     Accepts a URL and model selection.
     With HTMX, returns an HTML fragment for loading status.
     """
-    url = request.form.get('url')
-    if not url:
-        return render_template('partials/analysis_error.html', 
-                            error='URL is required'), 400
+    # Get and sanitize URL
+    url = request.form.get('url', '')
     
-    # Get selected model from form or use default
-    selected_model = request.form.get('model', Config.get_default_model())
+    # Validate URL
+    is_valid, error_message = validate_url(url)
+    if not is_valid:
+        return render_template('partials/analysis_error.html', 
+                            error=error_message), 400
+    
+    # Get selected model from form or use default (sanitize input)
+    selected_model = html.escape(request.form.get('model', Config.get_default_model()))
     print_status(f"User selected model: {selected_model}")
     
     # Check if this is an HTMX request 
@@ -48,15 +119,18 @@ def analysis_status():
     Endpoint to check the status of an ongoing analysis.
     Used by HTMX for step-by-step loading updates.
     """
-    url = request.args.get('url')
-    step = request.args.get('step', 'extract')
-    model = request.args.get('model', Config.get_default_model())
+    url = request.args.get('url', '')
+    
+    # Validate URL
+    is_valid, error_message = validate_url(url)
+    if not is_valid:
+        return render_template('partials/analysis_error.html', 
+                              error=error_message), 400
+    
+    step = html.escape(request.args.get('step', 'extract'))
+    model = html.escape(request.args.get('model', Config.get_default_model()))
     
     print_status(f"Analysis status check: URL={url}, Step={step}, Model={model}")
-    
-    if not url:
-        return render_template('partials/analysis_error.html', 
-                              error='URL is required for status check'), 400
     
     # For demo purposes, we're just returning the next loading step
     # In a real implementation, you would check the actual status
@@ -72,12 +146,15 @@ def analysis_result():
     Used by HTMX after all loading steps are complete.
     Can also be directly accessed to retrieve cached results.
     """
-    url = request.args.get('url')
-    if not url:
-        return render_template('partials/analysis_error.html', 
-                              error='URL is required'), 400
+    url = request.args.get('url', '')
     
-    model = request.args.get('model', Config.get_default_model())
+    # Validate URL
+    is_valid, error_message = validate_url(url)
+    if not is_valid:
+        return render_template('partials/analysis_error.html', 
+                              error=error_message), 400
+    
+    model = html.escape(request.args.get('model', Config.get_default_model()))
     print_status(f"Analysis result request: URL={url}, Model={model}")
     
     # Check cache for existing analysis
@@ -114,7 +191,6 @@ def analysis_result():
         
         # Format indicators for display if they exist
         if indicators and sum(len(ind) for ind in indicators.values()) > 0:
-            from app.utilities.indicator_extractor import format_indicators_for_display
             formatted_indicators = format_indicators_for_display(indicators)
             existing_analysis['structured_data']['indicators'] = formatted_indicators
             print_status(f"Retrieved {formatted_indicators['total_count']} indicators from database for URL: {url}")
@@ -330,12 +406,15 @@ def refresh_analysis():
     Endpoint to refresh/reanalyze a previously analyzed URL.
     Bypasses cache and forces a new analysis using the latest processing techniques.
     """
-    url = request.args.get('url')
-    if not url:
-        return render_template('partials/analysis_error.html', 
-                              error='URL is required for refresh'), 400
+    url = request.args.get('url', '')
     
-    model = request.args.get('model', Config.get_default_model())
+    # Validate URL
+    is_valid, error_message = validate_url(url)
+    if not is_valid:
+        return render_template('partials/analysis_error.html', 
+                              error=error_message), 400
+    
+    model = html.escape(request.args.get('model', Config.get_default_model()))
     print_status(f"Refreshing analysis for URL={url} with Model={model}")
     
     # Check cache for existing analysis to maintain original creation date
@@ -540,3 +619,101 @@ def refresh_analysis():
         return render_template('partials/analysis_error.html',
                              error=f"An error occurred during refresh: {str(e)}",
                              details=error_details if os.getenv('FLASK_DEBUG') == '1' else None), 500 
+
+@analysis_bp.route('/export/<format_type>')
+def export_analysis(format_type):
+    """
+    Export analysis in the specified format.
+    Supports JSON, CSV, PDF, and Markdown formats.
+    """
+    url = request.args.get('url', '')
+    
+    # Validate URL
+    is_valid, error_message = validate_url(url)
+    if not is_valid:
+        return jsonify({
+            "success": False,
+            "message": f"Invalid URL: {error_message}"
+        }), 400
+    
+    # Format type from URL parameter
+    format_type = format_type.lower()
+    
+    # Check cache for existing analysis
+    existing_analysis = get_analysis_by_url(url)
+    if not existing_analysis:
+        return jsonify({
+            "success": False,
+            "message": "No analysis found for this URL"
+        }), 404
+    
+    # Extract domain for filename
+    domain = None
+    try:
+        from urllib.parse import urlparse
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+    except:
+        domain = "unknown-domain"
+    
+    # Choose export function based on format type
+    export_functions = {
+        'json': export_analysis_as_json,
+        'csv': export_analysis_as_csv,
+        'markdown': export_analysis_as_markdown, 
+        'pdf': export_analysis_as_pdf
+    }
+    
+    if format_type not in export_functions:
+        return jsonify({
+            "success": False,
+            "message": f"Unsupported format: {format_type}. Supported formats are: json, csv, markdown, pdf"
+        }), 400
+    
+    # Prepare data for export
+    analysis_data = {
+        "summary": existing_analysis.get("structured_data", {}).get("summary", ""),
+        "source_evaluation": existing_analysis.get("structured_data", {}).get("source_evaluation", {}),
+        "threat_actors": existing_analysis.get("structured_data", {}).get("threat_actors", []),
+        "mitre_techniques": existing_analysis.get("structured_data", {}).get("mitre_techniques", []),
+        "key_insights": existing_analysis.get("structured_data", {}).get("key_insights", []),
+        "source_bias": existing_analysis.get("structured_data", {}).get("potential_issues", []),
+        "intelligence_gaps": existing_analysis.get("structured_data", {}).get("intelligence_gaps", []),
+        "critical_infrastructure_sectors": existing_analysis.get("structured_data", {}).get("critical_sectors", {})
+    }
+    
+    # Export data in the requested format
+    export_function = export_functions[format_type]
+    export_result = export_function(analysis_data, domain)
+    
+    if not export_result.get("success", False):
+        return jsonify({
+            "success": False,
+            "message": export_result.get("message", "Failed to export analysis")
+        }), 500
+    
+    # Return the file for download
+    file_path = export_result.get("file_path")
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({
+            "success": False,
+            "message": "Failed to generate export file"
+        }), 500
+    
+    # Get filename from path
+    filename = os.path.basename(file_path)
+    
+    # Set proper content type based on format
+    content_types = {
+        'json': 'application/json',
+        'csv': 'text/csv',
+        'markdown': 'text/markdown',
+        'pdf': 'application/pdf'
+    }
+    
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=filename,
+        mimetype=content_types.get(format_type, 'application/octet-stream')
+    ) 
