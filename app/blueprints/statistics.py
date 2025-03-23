@@ -29,6 +29,13 @@ def statistics():
             # Map the original model ID to its normalized pricing
             if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
                 normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+            # If no direct match found, check if we can extract the base model
+            elif analysis['model_id'] not in normalized_model_prices:
+                base_models = list(model_prices.keys())
+                for base_model in base_models:
+                    if base_model in analysis['model_id']:
+                        normalized_model_prices[analysis['model_id']] = model_prices[base_model]
+                        break
     
     # Merge normalized prices with standard prices
     template_model_prices = {**model_prices, **normalized_model_prices}
@@ -72,6 +79,13 @@ def refresh_statistics():
             # Map the original model ID to its normalized pricing
             if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
                 normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+            # If no direct match found, check if we can extract the base model
+            elif analysis['model_id'] not in normalized_model_prices:
+                base_models = list(model_prices.keys())
+                for base_model in base_models:
+                    if base_model in analysis['model_id']:
+                        normalized_model_prices[analysis['model_id']] = model_prices[base_model]
+                        break
     
     # Merge normalized prices with standard prices
     template_model_prices = {**model_prices, **normalized_model_prices}

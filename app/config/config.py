@@ -70,6 +70,11 @@ class Config:
     def get_model_prices() -> Dict[str, Dict[str, float]]:
         """Get model pricing information."""
         return {
+            "gpt-3.5-turbo": {
+                "input": 0.0005,
+                "cached": 0.00025,
+                "output": 0.0015
+            },
             "gpt-4o-mini": {
                 "input": 0.15,
                 "cached": 0.075,
@@ -96,13 +101,21 @@ class Config:
         For example:
         - "gpt-4o-2024-08-06" -> "gpt-4o"
         - "gpt-4-turbo-0125" -> "gpt-4-turbo"
+        - "gpt-3.5-turbo" -> "gpt-3.5-turbo"
         """
+        if not model_id:
+            return ""
+            
         # Define model aliases to map specific versions to their base models
         model_aliases = {
             # Map any specific versioned models to base models
             "gpt-4o-2024-08-06": "gpt-4o",
             "gpt-4o-mini-2024-07-18": "gpt-4o-mini",
-            "gpt-4-turbo-2024-04-09": "gpt-4-turbo"
+            "gpt-4-turbo-2024-04-09": "gpt-4-turbo",
+            "gpt-3.5-turbo": "gpt-3.5-turbo",
+            "gpt-3.5-turbo-0125": "gpt-3.5-turbo",
+            "gpt-3.5-turbo-1106": "gpt-3.5-turbo",
+            "gpt-3.5-turbo-0613": "gpt-3.5-turbo"
         }
         
         # Check if there's a direct alias mapping
@@ -112,6 +125,14 @@ class Config:
         # For standard versioned models, try to extract the base model
         # Strip out date-based version identifiers like -2024-08-06 or -0125
         base_model = re.sub(r'-(20\d{2}-\d{2}-\d{2}|\d{4})$', '', model_id)
+        
+        # If we didn't find a specific match, try the base model extraction
+        if base_model == model_id:
+            # Try to match to one of our known base models
+            known_base_models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
+            for known_model in known_base_models:
+                if known_model in model_id:
+                    return known_model
         
         return base_model
         

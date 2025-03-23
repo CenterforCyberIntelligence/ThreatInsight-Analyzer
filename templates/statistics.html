@@ -126,7 +126,13 @@
                                     </div>
                                     <div class="model-cost">
                                         <span>Cost</span>
-                                        <span>${{ ((stats.regular_input * model_prices[model_id].input + stats.cached_input * model_prices[model_id].cached + stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}</span>
+                                        <span>
+                                            {% if model_id in model_prices %}
+                                                ${{ ((stats.regular_input * model_prices[model_id].input + stats.cached_input * model_prices[model_id].cached + stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}
+                                            {% else %}
+                                                $0.00 (pricing unavailable)
+                                            {% endif %}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

@@ -271,3 +271,98 @@ Once decisions are made on these discrepancies, either the implementation will b
 - **Failed Tests in Statistics Blueprint**: Resolved by improving the testing approach to focus on endpoint functionality without manipulating template rendering directly
 - **Indicator Extractor Test Failures**: Updated tests to use only public API functions and avoid internal validation functions
 - **Logger Module Testing Improvements**: Enhanced the test suite for comprehensive coverage of logging functions
+
+### Fixed in Version 1.0.1
+
+**Statistics Page Error with Unknown Model Types**
+- **Issue:** The statistics page would crash with a jinja2.exceptions.UndefinedError when encountering models like 'gpt-3.5-turbo' that were not defined in the model_prices dictionary
+- **Impact:** Users experienced 500 errors when viewing the statistics page if they had used models not explicitly defined in the configuration
+- **Root Cause:** The templates did not check if a model_id existed in the model_prices dictionary before attempting to access it, and the normalize_model_id method was not handling all possible model variants
+- **Resolution:** Added error handling in templates to gracefully handle missing model pricing, updated the Config.normalize_model_id method to better handle various model versions, and added gpt-3.5-turbo pricing to the Config.get_model_prices method
+
+### Text Parsing and Analysis
+
+### Text Parsing Reliability with Complex Formats (RESOLVED in version 1.1.0)
+- **Issue**: The regex-based parsing system to extract structured data from free-text OpenAI responses was fragile and could break with formatting changes.
+- **Cause**: Reliance on specific text patterns in AI-generated content for parsing.
+- **Resolution**: Implemented OpenAI's structured JSON responses feature, completely eliminating the need for regex-based parsing. The system now requests and receives properly structured JSON data directly from the API, making the analysis more reliable and robust.
+- **Status**: Fixed in version 1.1.0
+
+### OpenAI Structured Outputs API Parameter Mismatch
+- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "unexpected keyword argument 'max_tokens'"
+- **Root Cause**: The newer Structured Outputs API uses `max_output_tokens` parameter instead of `max_tokens`
+- **Resolution**: Updated the API call to use the correct parameter name
+- **Status**: Fixed in version 1.1.0
+
+### OpenAI Structured Outputs API Seed Parameter Issue
+- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "unexpected keyword argument 'seed'"
+- **Root Cause**: The newer Structured Outputs API doesn't support the `seed` parameter
+- **Resolution**: Removed the `seed` parameter from the API call
+- **Status**: Fixed in version 1.1.0
+
+### OpenAI Structured Outputs JSON Schema Issue
+- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "Invalid schema for response_format 'threat_intelligence_report': In context=(), 'additionalProperties' is required to be supplied and to be false."
+- **Root Cause**: The JSON schema for the Structured Outputs API requires "additionalProperties": false for all object types
+- **Resolution**: Added "additionalProperties": false to all object definitions in the JSON schema
+- **Status**: Fixed in version 1.1.0
+
+### Backend Error Handling Improvement
+- **Issue**: When API or extraction errors occurred, users were presented with a basic error page that lacked context and helpful recovery options
+- **Root Cause**: The error templates and error handling code didn't provide sufficient user feedback
+- **Resolution**: Enhanced the error handling UI with more detailed error messages, error-specific suggestions, and retry options
+- **Status**: Fixed in version 1.1.0
+
+## Current Issues
+
+### Test Failures
+- Multiple test failures in various modules due to API changes or implementation discrepancies
+- Helper function tests failing due to changes in expected behavior (`sanitize_filename`, `truncate_text`, `calculate_percentages`)
+- Main blueprint tests failing due to missing routes (`about`, `sitemap.xml`, `robots.txt`, `contact`)
+- Integration tests failing due to missing mock fixtures
+- Settings blueprint tests failing due to missing or incorrect implementation
+
+### Implementation Discrepancies
+- Database module location discrepancy: tests reference `app.utilities.database` but implementation uses `app.models.database`
+- Missing `update_env_file` and `read_env_file` functions in the settings blueprint
+
+### Export Functionality Issues
+- **Issue**: Adobe Acrobat cannot open exported PDF files
+  **Details**: Users encounter an error: "Adobe Acrobat could not open '<NAME>.pdf' because it is either not a supported file type or because the file has been damaged (for example, it was sent as an email attachment and wasn't correctly decoded)."
+  **Impact**: Users cannot view exported PDF analyses in Adobe Acrobat
+  **Root cause**: The current PDF export implementation creates a text file with a .pdf extension instead of a properly formatted PDF file
+  **Resolution needed**: Implement proper PDF generation using a library such as WeasyPrint or ReportLab
+
+Once decisions are made on these discrepancies, either the implementation will be updated to match the original test expectations, or the test changes will be finalized as the correct approach.
+
+### OpenAI Structured Outputs JSON Schema Python Syntax Error
+- **Issue**: The JSON schema for the OpenAI API was using JavaScript syntax (`false`) instead of Python syntax (`False`)
+- **Root Cause**: Python requires boolean values to be capitalized (`True`/`False`), while JSON uses lowercase (`true`/`false`)
+- **Resolution**: Changed all instances of lowercase `false` to uppercase `False` in the JSON schema definition
+- **Status**: Fixed in version 1.1.0
+
+### Server Error Display Enhancement
+- **Issue**: When server errors occurred (such as Python syntax errors), users were shown a generic 500 error page instead of a helpful error message
+- **Root Cause**: The application lacked a global error handler for 500 errors that would render our custom error template
+- **Resolution**: Added a custom Flask error handler for 500 errors that renders the `analysis_error.html` template with helpful error information and provides the option to retry
+- **Status**: Fixed in version 1.1.0
+
+### Resolved Issues
+
+#### OpenAI Structured Outputs API Issues
+
+- **Issue**: OpenAI API call failed with error: "In context=('properties', 'critical_sectors', 'items', 'properties', 'score'), 'minimum' is not permitted."
+- **Root Cause**: OpenAI's Structured Outputs JSON schema validation doesn't support the 'minimum' and 'maximum' properties for integer constraints.
+- **Resolution**: Removed the 'minimum' and 'maximum' properties from the schema definition and updated the description to include the valid range.
+- **Status**: Fixed in version 1.1.0.
+
+- **Issue**: HTMX error handling was not properly displaying backend errors in the frontend.
+- **Root Cause**: Missing error handling in the HTMX setup and inconsistent error properties in template rendering.
+- **Resolution**: Added HTMX error event handler to display error responses in the frontend and updated all error template renderings to include consistent error type and title information.
+- **Status**: Fixed in version 1.1.0.
+
+#### Database Function Parameter Mismatch
+
+- **Issue**: Store analysis database function failed with error: "store_analysis() got an unexpected keyword argument 'raw_text'".
+- **Root Cause**: Parameter name mismatch between what the function expected ('raw_analysis') and what was being passed ('raw_text').
+- **Resolution**: Updated the parameter name in the function call to match the expected parameter name.
+- **Status**: Fixed in version 1.1.0.

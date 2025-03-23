@@ -1,9 +1,10 @@
-from flask import Flask
+from flask import Flask, render_template, request, jsonify
 from app.config.config import Config
 import os
 import logging
 from datetime import datetime
 from app.utilities.logger import logger
+import traceback
 
 def create_app(config_class=Config):
     """Create and configure the Flask application."""
@@ -53,5 +54,58 @@ def create_app(config_class=Config):
     
     # Log application initialization complete
     app.logger.info("Application initialization complete")
+    
+    # Add error handlers for better user experience
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        """Handle 500 errors with a custom template that works with HTMX."""
+        error_message = str(e)
+        error_details = traceback.format_exc() if app.config.get('DEBUG', False) else None
+        
+        # Determine if this is an HTMX request
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        
+        # Determine error type based on the error message
+        error_type = 'unknown'
+        error_title = 'Server Error'
+        
+        if 'openai' in error_message.lower() or 'api' in error_message.lower():
+            error_type = 'openai_api'
+            error_title = 'OpenAI API Error'
+        elif 'extraction' in error_message.lower() or 'url' in error_message.lower():
+            error_type = 'extraction'
+            error_title = 'Content Extraction Error'
+        elif 'NameError' in error_message:
+            error_type = 'openai_api'
+            error_title = 'API Configuration Error'
+            
+        # Get URL and model from request if available
+        url = request.args.get('url', '')
+        model = request.args.get('model', Config.get_default_model())
+        
+        # Log the error
+        app.logger.error(f"500 error: {error_message}")
+        if error_details:
+            app.logger.error(f"Traceback: {error_details}")
+        
+        # For HTMX requests, return just the error partial
+        if is_htmx:
+            app.logger.info(f"Returning HTMX error response with type={error_type}, title={error_title}")
+            app.logger.info(f"Error template variables: url={url}, model={model}")
+            return render_template('partials/analysis_error.html',
+                                  error=f"Server error: {error_message}",
+                                  error_type=error_type,
+                                  error_title=error_title,
+                                  url=url,
+                                  model=model,
+                                  details=error_details), 500
+        
+        # For regular requests, return the full page with error content
+        app.logger.info(f"Returning full page error response with type={error_type}, title={error_title}")
+        return render_template('index.html',
+                              error=f"Server error: {error_message}",
+                              error_type=error_type,
+                              error_title=error_title,
+                              details=error_details), 500
     
     return app 

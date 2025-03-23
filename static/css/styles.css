@@ -806,22 +806,22 @@ body::before {
 }
 
 .insight-item {
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 1rem 1.25rem;
-    color: var(--text-secondary);
-    position: relative;
-    padding-left: 2.5rem;
+    padding: 12px 15px;
+    background: rgba(24, 35, 64, 0.3);
+    border-radius: 6px;
+    color: var(--text-primary);
+    border-left: 3px solid rgba(78, 165, 255, 0.5);
+    margin-bottom: 10px;
+    transition: background 0.2s ease;
 }
 
-.insight-item::before {
-    content: '•';
-    position: absolute;
-    left: 1rem;
-    color: var(--primary);
-    font-size: 1.5rem;
-    line-height: 1;
+.insight-item:hover {
+    background: rgba(24, 35, 64, 0.4);
+}
+
+.insight-item.empty-cell {
+    border-left-color: rgba(var(--text-muted-rgb), 0.3);
+    background: rgba(24, 35, 64, 0.2);
 }
 
 /* Potential Issues */
@@ -1430,7 +1430,8 @@ body::before {
 .insights-minimal {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    margin-bottom: 15px;
 }
 
 .insight-item {
@@ -1577,4 +1578,296 @@ body::before {
     color: var(--text-muted);
     font-style: italic;
     font-size: 0.85rem;
+}
+
+/* Threat Actors Table */
+.threat-actors-table-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    border: 1px solid rgba(78, 165, 255, 0.2);
+    background: rgba(15, 23, 42, 0.2);
+}
+
+.threat-actors-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background-color: transparent;
+}
+
+.threat-actors-table th,
+.threat-actors-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(78, 165, 255, 0.1);
+    vertical-align: top;
+}
+
+.threat-actors-table th {
+    background-color: rgba(78, 165, 255, 0.1);
+    font-weight: 600;
+    color: var(--text-light);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.threat-actors-table tbody tr:hover {
+    background-color: rgba(78, 165, 255, 0.05);
+}
+
+.actor-name-cell {
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-light);
+}
+
+.actor-desc-cell {
+    min-width: 200px;
+    color: var(--text-muted);
+}
+
+.actor-confidence-cell {
+    white-space: nowrap;
+    font-weight: 600;
+    text-align: center;
+}
+
+.actor-confidence-cell.high {
+    color: var(--success);
+}
+
+.actor-confidence-cell.medium {
+    color: var(--warning);
+}
+
+.actor-confidence-cell.low {
+    color: var(--danger);
+}
+
+.actor-aliases-cell {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.no-aliases {
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Critical Sectors Table */
+.critical-sectors-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    border: 1px solid rgba(78, 165, 255, 0.2);
+    background: rgba(15, 23, 42, 0.2);
+}
+
+.critical-sectors-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background-color: transparent;
+}
+
+.critical-sectors-table th,
+.critical-sectors-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(78, 165, 255, 0.1);
+    vertical-align: top;
+}
+
+.critical-sectors-table th {
+    background-color: rgba(78, 165, 255, 0.1);
+    font-weight: 600;
+    color: var(--text-light);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.critical-sectors-table tbody tr:hover {
+    background-color: rgba(78, 165, 255, 0.05);
+}
+
+.sector-name-cell {
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-light);
+}
+
+.sector-score-cell {
+    text-align: center;
+}
+
+.sector-score-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.sector-score-badge.score-1 {
+    background: rgba(var(--danger-rgb), 0.2);
+    color: var(--danger);
+}
+
+.sector-score-badge.score-2 {
+    background: rgba(var(--warning-rgb), 0.15);
+    color: var(--warning);
+}
+
+.sector-score-badge.score-3 {
+    background: rgba(var(--info-rgb), 0.15);
+    color: var(--info);
+}
+
+.sector-score-badge.score-4 {
+    background: rgba(var(--primary-rgb), 0.15);
+    color: var(--primary);
+}
+
+.sector-score-badge.score-5 {
+    background: rgba(var(--success-rgb), 0.15);
+    color: var(--success);
+}
+
+.sector-justification-cell {
+    min-width: 200px;
+    color: var(--text-muted);
+}
+
+/* Error card styles */
+.error-card {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.error-card .card-header {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-bottom: 1px solid var(--danger);
+}
+
+.error-card .card-title {
+    color: var(--danger);
+}
+
+.error-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.error-message i {
+    font-size: 1.5rem;
+    color: var(--danger);
+    flex-shrink: 0;
+}
+
+.message-content h3 {
+    color: var(--danger);
+    margin-bottom: 0.75rem;
+}
+
+.error-suggestions {
+    background: rgba(239, 68, 68, 0.05);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.error-suggestions ul {
+    margin-left: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.error-details-container {
+    margin-bottom: 1.5rem;
+}
+
+.show-details-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+}
+
+.show-details-btn:hover {
+    color: var(--text-primary);
+}
+
+.error-details {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+}
+
+.error-details pre {
+    color: var(--text-muted);
+    font-family: monospace;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+}
+
+.error-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Utility classes */
+.mr-2 {
+    margin-right: 0.5rem;
+}
+
+.btn-success {
+    background-color: var(--success);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #34d399;
+    box-shadow: 0 0 10px var(--success-glow);
+}
+
+/* Empty State Styling */
+.empty-cell {
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Table improvements */
+.threat-actors-table-container,
+.critical-sectors-container,
+.mitre-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.threat-actors-table th:first-child,
+.critical-sectors-table th:first-child,
+.mitre-table th:first-child {
+    border-top-left-radius: 6px;
+}
+
+.threat-actors-table th:last-child,
+.critical-sectors-table th:last-child,
+.mitre-table th:last-child {
+    border-top-right-radius: 6px;
 } 

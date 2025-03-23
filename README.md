@@ -1,5 +1,5 @@
 # Artificial Cyber Intelligence Analyst 
-[![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
+[![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE.md)
 
@@ -51,16 +51,17 @@ This project is in active development. Features are being implemented incrementa
 
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
 
-## Documentation
-
-- [README.md](README.md) - Project overview and getting started guide
-- [CHANGELOG.md](CHANGELOG.md) - History of changes and version updates
-- [Known Issues.md](Known%20Issues.md) - Current and resolved issues
-- [TODO.md](TODO.md) - Roadmap for future features and improvements
-- [LICENSE.md](LICENSE.md) - License information
-
 ## Technology Overview
-- **Release Date:** March 22, 2025
+
+- **Backend**: Python with Flask for the web framework
+- **Frontend**: HTML, CSS, and JavaScript with HTMX for dynamic content
+- **AI Integration**: OpenAI API with structured JSON schema validation 
+  - Using the newer `responses.create()` API with strict schema validation
+  - Robust error handling for content filters, token limits, and refusals
+  - Graceful degradation with user-friendly error messages
+- **Database**: SQLite for data persistence
+- **Content Extraction**: Newspaper3k for article text extraction
+- **IOC Extraction**: Regex-based extraction of Indicators of Compromise
 
 ### Languages
 <div align="center">
@@ -87,20 +88,30 @@ This project is in active development. Features are being implemented incrementa
 </div>
 
 ## Version
-Current version: 1.0.1
+
+**Current Version:** 1.1.0
+
+### Version History
+
+- **1.1.0**: Major refactoring to use OpenAI's structured JSON responses, improved error handling, added threat actor identification and intelligence gaps analysis.
+- **1.0.1**: Minor updates and bug fixes.
+- **1.0.0**: Initial release with core functionality.
 
 ## Features
-- Web-based user interface for submitting and reviewing threat intelligence articles
-- Automated OpenAI-powered analysis of cybersecurity articles and reports
-- Extraction and standardization of MITRE ATT&CK techniques with proper linking
-- Source credibility and reliability assessments
-- Threat actor identification and categorization
-- Critical infrastructure sector impact analysis
-- Database storage for historical analysis and quick retrieval
-- Support for multiple OpenAI models with automatic cost calculation
-- Model ID normalization system to handle different model versions
-- Statistics dashboard with token usage and cost breakdown
-- Export analysis results in multiple formats (JSON, CSV, PDF, Markdown) for offline use and sharing
+
+* **Cyber Threat Analysis**: Analyze cybersecurity articles to extract key intelligence points
+* **Source Evaluation**: Automatic assessment of source reliability and credibility
+* **MITRE ATT&CK Framework**: Identification of relevant MITRE ATT&CK techniques mentioned in content
+* **Threat Actor Identification**: Identify and assess threat actors mentioned in articles with confidence levels
+* **Intelligence Gaps Analysis**: Highlight missing information or intelligence gaps in the analyzed content
+* **IOC Extraction**: Automatic detection of Indicators of Compromise within article text
+* **Critical Infrastructure Assessment**: Evaluate relevance to 16 critical infrastructure sectors
+* **Structured JSON Responses**: Leverages OpenAI's JSON Schema validation for reliable, consistent output structure
+* **Multiple Export Formats**: Export analyses as JSON, CSV, PDF, or Markdown
+* **Caching**: Save API costs by caching previously analyzed URLs
+* **Usage Statistics**: Track token usage and costs by model
+* **Multi-Model Support**: Choose from various OpenAI models based on analysis needs
+* **Custom API Integration**: Use your own OpenAI API key
 
 ## Interface Preview
 

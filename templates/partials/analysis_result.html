@@ -328,20 +328,112 @@
                         </div>
                         {% endif %}
                         
-                        {% if structured_analysis.relevance %}
+                        {% if structured_analysis.threat_actors and structured_analysis.threat_actors|length > 0 %}
                         <div class="analysis-section ai-minimalist">
                             <h3 class="ai-section-title">
-                                Relevance to U.S. Government
+                                Threat Actors Identified
                                 <span class="ai-indicator" title="AI-generated using {{ model }}">
                                     <i class="fas fa-robot"></i>
                                 </span>
                             </h3>
                             <div class="ai-content">
-                                <div class="relevance-minimal">
-                                    <div class="relevance-score-badge score-{{ structured_analysis.relevance.score }}">
-                                        {{ structured_analysis.relevance.score }}/5
-                                    </div>
-                                    <div class="relevance-justification">{{ structured_analysis.relevance.justification|safe }}</div>
+                                <div class="threat-actors-table-container">
+                                    <table class="threat-actors-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Actor</th>
+                                                <th>Description</th>
+                                                <th>Confidence</th>
+                                                <th>Aliases</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for actor in structured_analysis.threat_actors %}
+                                            <tr>
+                                                <td class="actor-name-cell">{{ actor.name|safe or "None provided" }}</td>
+                                                <td class="actor-desc-cell">{{ actor.description|safe or "No description provided" }}</td>
+                                                <td class="actor-confidence-cell {{ actor.confidence|lower if actor.confidence else 'medium' }}">
+                                                    {{ actor.confidence|default('Medium') }}
+                                                </td>
+                                                <td class="actor-aliases-cell">
+                                                    {% if actor.aliases and actor.aliases|length > 0 %}
+                                                        {{ actor.aliases|join(', ')|safe }}
+                                                    {% else %}
+                                                        <span class="no-aliases">None known</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% if structured_analysis.threat_actors|length == 0 %}
+                                            <tr>
+                                                <td colspan="4" class="empty-cell">No threat actors identified in this analysis</td>
+                                            </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.intelligence_gaps and structured_analysis.intelligence_gaps|length > 0 %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Intelligence Gaps
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="insights-minimal">
+                                    {% for gap in structured_analysis.intelligence_gaps %}
+                                    <div class="insight-item">{{ gap|safe }}</div>
+                                    {% endfor %}
+                                    {% if structured_analysis.intelligence_gaps|length == 0 %}
+                                    <div class="insight-item empty-cell">No specific intelligence gaps identified</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
+                        <div class="analysis-section ai-minimalist">
+                            <h3 class="ai-section-title">
+                                Critical Infrastructure Sectors
+                                <span class="ai-indicator" title="AI-generated using {{ model }}">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                            </h3>
+                            <div class="ai-content">
+                                <div class="critical-sectors-container">
+                                    <table class="critical-sectors-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Sector</th>
+                                                <th>Relevance</th>
+                                                <th>Justification</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for sector in structured_analysis.critical_sectors %}
+                                            <tr>
+                                                <td class="sector-name-cell">{{ sector.name|safe or "None provided" }}</td>
+                                                <td class="sector-score-cell">
+                                                    <div class="sector-score-badge score-{{ sector.score }}">
+                                                        {{ sector.score }}/5
+                                                    </div>
+                                                </td>
+                                                <td class="sector-justification-cell">{{ sector.justification|safe or "No justification provided" }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% if structured_analysis.critical_sectors|length == 0 %}
+                                            <tr>
+                                                <td colspan="3" class="empty-cell">No critical infrastructure sectors identified for this threat</td>
+                                            </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -487,25 +579,6 @@
                                 </div>
                             </div>
                             {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
-                        <div class="analysis-section">
-                            <h3>Critical Infrastructure Sectors Assessment</h3>
-                            <div class="sectors-grid">
-                                {% for sector in structured_analysis.critical_sectors %}
-                                <div class="sector-item">
-                                    <div class="sector-header">
-                                        <span class="sector-name">{{ sector.name }}</span>
-                                        <span class="sector-score score-{{ sector.score }}">{{ sector.score }}/5</span>
-                                    </div>
-                                    {% if sector.justification %}
-                                    <p class="sector-justification">{{ sector.justification|safe }}</p>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
                         </div>
                         {% endif %}
                     </div>

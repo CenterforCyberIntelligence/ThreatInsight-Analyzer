@@ -13,15 +13,11 @@
             <div class="stat-title">Total Cost</div>
             <div class="stat-value">$
                 {% set total_cost = 0 %}
-                {% if 'gpt-4o-mini' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4o-mini'].regular_input * model_prices['gpt-4o-mini'].input + stats.models['gpt-4o-mini'].cached_input * model_prices['gpt-4o-mini'].cached + stats.models['gpt-4o-mini'].total_output * model_prices['gpt-4o-mini'].output) / 1000000 %}
-                {% endif %}
-                {% if 'gpt-4o' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4o'].regular_input * model_prices['gpt-4o'].input + stats.models['gpt-4o'].cached_input * model_prices['gpt-4o'].cached + stats.models['gpt-4o'].total_output * model_prices['gpt-4o'].output) / 1000000 %}
-                {% endif %}
-                {% if 'gpt-4-turbo' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4-turbo'].regular_input * model_prices['gpt-4-turbo'].input + stats.models['gpt-4-turbo'].cached_input * model_prices['gpt-4-turbo'].cached + stats.models['gpt-4-turbo'].total_output * model_prices['gpt-4-turbo'].output) / 1000000 %}
-                {% endif %}
+                {% for model_id, model_stats in stats.models.items() %}
+                    {% if model_id in model_prices %}
+                        {% set total_cost = total_cost + (model_stats.regular_input * model_prices[model_id].input + model_stats.cached_input * model_prices[model_id].cached + model_stats.total_output * model_prices[model_id].output) / 1000000 %}
+                    {% endif %}
+                {% endfor %}
                 {{ total_cost | round(4) }}
             </div>
         </div>
@@ -70,7 +66,13 @@
                     </div>
                     <div class="model-cost">
                         <span>Cost</span>
-                        <span>${{ ((model_stats.regular_input * model_prices[model_id].input + model_stats.cached_input * model_prices[model_id].cached + model_stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}</span>
+                        <span>
+                            {% if model_id in model_prices %}
+                                ${{ ((model_stats.regular_input * model_prices[model_id].input + model_stats.cached_input * model_prices[model_id].cached + model_stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}
+                            {% else %}
+                                $0.00 (pricing unavailable)
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </div>

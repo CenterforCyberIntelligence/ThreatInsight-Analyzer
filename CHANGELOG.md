@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-03-22
+
+### Added
+- New fields to threat intelligence analysis:
+  - Threat actors identification with confidence levels and aliases
+  - Intelligence gaps section to highlight missing information
+  - More comprehensive critical infrastructure sector assessment
+- Enhanced error handling for API responses:
+  - Specific handling for refusals
+  - Detection of content filter triggers
+  - Better handling of token limit issues
+  - Graceful fallbacks for incomplete responses
+- Improved user interface for error handling:
+  - Detailed error messages with error-specific suggestions
+  - Retry option for failed analyses
+  - Technical details display for debugging
+- Comprehensive error handling for frontend display of backend errors
+- Improved error feedback with specific suggestions based on error type
+- Retry functionality directly from error screens to improve user experience
+- Enhanced debugging in error handlers to better trace issues
+
+### Changed
+- Major refactoring to use OpenAI's structured JSON responses:
+  - Replaced regex-based parsing with direct JSON structure
+  - Updated system prompt to request properly formatted JSON
+  - Enhanced response validation and error handling for JSON parsing
+  - Improved robustness by adding fallback defaults for missing fields
+  - **Upgraded to the newer OpenAI Responses API** with JSON Schema validation
+  - Implemented strict schema validation for more consistent outputs
+  - Fixed API parameter naming from `max_tokens` to `max_output_tokens`
+  - Removed unsupported `seed` parameter from API calls
+  - Added required `additionalProperties: false` to JSON schema objects
+- Updated display templates to show new analysis fields:
+  - Added threat actors table with confidence levels
+  - Added intelligence gaps section
+  - Reformatted critical sectors display
+- Enhanced export functionality:
+  - CSV exports now include all structured data fields
+  - Markdown exports now use tables for better formatting of sectors and threat actors
+- Fixed JSON schema validation by adding 'threat_actors' to the required properties array
+- Improved error template with better visuals and more helpful suggestions
+- Enhanced error display with types, titles, and user-friendly messages
+- Updated retry button to use POST method consistent with the main form
+- Fixed JSON schema validation by removing unsupported 'minimum' and 'maximum' properties
+- Enhanced HTMX error handling with event handlers to properly display backend errors
+- Made error handling consistent across all routes with proper error typing
+- Fixed parameter mismatch in store_analysis function call
+
+### Removed
+- Legacy text parsing functions no longer needed with structured JSON responses
+- Redundant extraction code for MITRE techniques and other fields
+- Deprecated `chat.completions.create` API calls in favor of `responses.create`
+
 ## [1.0.1] - 2025-03-22
 
 ### Added
@@ -74,3 +127,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Hash type expectations in indicator extraction
   - Text extraction whitespace handling
   - CVE identifier case handling
+
+## [Unreleased]
+
+### Added
+- Project name changed to "Artificial Cyber Intelligence Analyst"
+- Updates to documentation files and UI elements to reflect the new project name 
+- Added TODO.md with roadmap for upcoming features and improvements
+- Updated Database Structure documentation in the README.md for developers
+
+### Fixed
+- Fixed statistics page error when encountering models not defined in the model_prices dictionary
+- Added proper error handling for price calculations in templates
+- Enhanced model normalization to better handle various model versions
+- Added pricing for gpt-3.5-turbo model

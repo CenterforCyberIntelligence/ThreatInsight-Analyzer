@@ -51,7 +51,10 @@
                           hx-post="/analyze" 
                           hx-target="#analysis-result-container"
                           hx-swap="outerHTML"
-                          hx-indicator="#loading-indicator">
+                          hx-indicator="#loading-indicator"
+                          hx-on::after-request="if(event.detail.successful === false) { 
+                            document.getElementById('analysis-result-container').innerHTML = event.detail.xhr.responseText; 
+                          }">
                         <div class="form-group">
                             <label for="url" class="form-label">Article URL</label>
                             <div class="input-group">

@@ -1,6 +1,6 @@
 <div class="card error-card" id="error-container">
     <div class="card-header">
-        <h2 class="card-title"><i class="fas fa-exclamation-circle"></i> Error</h2>
+        <h2 class="card-title"><i class="fas fa-exclamation-circle"></i> Analysis Failed</h2>
         <button class="close-btn" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
             <i class="fas fa-times"></i>
         </button>
@@ -9,8 +9,28 @@
         <div class="error-message">
             <i class="fas fa-exclamation-triangle"></i>
             <div class="message-content">
-                <h3>Analysis Error</h3>
+                <h3>{{ error_title|default('Analysis Error') }}</h3>
                 <p>{{ error }}</p>
+                
+                {% if error_type == 'openai_api' %}
+                <div class="error-suggestions">
+                    <p><strong>Suggestions:</strong></p>
+                    <ul>
+                        <li>Try using a different OpenAI model</li>
+                        <li>Check if your API key has sufficient quota</li>
+                        <li>The OpenAI service might be experiencing high traffic</li>
+                    </ul>
+                </div>
+                {% elif error_type == 'extraction' %}
+                <div class="error-suggestions">
+                    <p><strong>Suggestions:</strong></p>
+                    <ul>
+                        <li>Verify the URL is correct and accessible</li>
+                        <li>The website might be blocking automated content extraction</li>
+                        <li>Try a different article from the same source</li>
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
         
@@ -26,9 +46,18 @@
         {% endif %}
         
         <div class="error-actions">
-            <button class="btn btn-primary" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
+            <button class="btn btn-primary mr-2" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
                 <i class="fas fa-arrow-left"></i> Back to Form
             </button>
+            
+            {% if url and model %}
+            <button class="btn btn-success" hx-post="/analyze" 
+                    hx-vals='{"url": "{{ url }}", "model": "{{ model }}"}' 
+                    hx-target="#analysis-result-container" 
+                    hx-indicator="#loading-indicator">
+                <i class="fas fa-sync-alt"></i> Retry Analysis
+            </button>
+            {% endif %}
         </div>
     </div>
 </div>
