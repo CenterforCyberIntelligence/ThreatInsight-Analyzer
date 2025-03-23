@@ -9,6 +9,35 @@
 
 A web-based tool that uses AI to aid in rapid summarization and analysis of cybersecurity articles to generate structured threat intelligence insights.
 
+## Table of Contents
+
+- [Current Status](#current-status)
+- [Documentation](#documentation)
+  - [README.md](README.md) - Project overview and getting started
+  - [CHANGELOG.md](CHANGELOG.md) - Version history and updates
+  - [Known Issues.md](Known%20Issues.md) - Current and resolved issues
+  - [TODO.md](TODO.md) - Future development roadmap
+  - [LICENSE.md](LICENSE.md) - License information
+- [Technology Overview](#technology-overview)
+- [Version](#version)
+- [Features](#features)
+- [Interface Preview](#interface-preview)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Configuration](#configuration)
+  - [URL Validation Configuration](#url-validation-configuration)
+- [Available Models](#available-models)
+- [Running the Application](#running-the-application)
+- [Usage](#usage)
+- [Development Status](#development-status)
+- [Database Structure](#database-structure)
+  - [Tables](#tables)
+  - [Database Functions](#database-functions)
+- [Security Notes](#security-notes)
+- [Testing](#testing)
+- [Disclaimer](#disclaimer)
+- [License](#license)
+
 ## Current Status
 
 This project is in active development. Features are being implemented incrementally, and the codebase is evolving. Known issues are documented in the [Known Issues](Known%20Issues.md) file. If you are a fan of this project and want to see it keep growing, consider adding some fuel to the tank. 
@@ -21,6 +50,14 @@ This project is in active development. Features are being implemented incrementa
 </div>
 
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
+
+## Documentation
+
+- [README.md](README.md) - Project overview and getting started guide
+- [CHANGELOG.md](CHANGELOG.md) - History of changes and version updates
+- [Known Issues.md](Known%20Issues.md) - Current and resolved issues
+- [TODO.md](TODO.md) - Roadmap for future features and improvements
+- [LICENSE.md](LICENSE.md) - License information
 
 ## Technology Overview
 - **Release Date:** March 22, 2025
