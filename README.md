@@ -1,75 +1,9 @@
+
+
 # Artificial Cyber Intelligence Analyst 
 [![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
-
-A powerful AI-powered tool for analyzing cybersecurity articles and extracting key threat intelligence insights.
-
-## Key Features
-
-- **URL Analysis**: Submit any cybersecurity article URL for deep analysis
-- **Threat Intelligence Extraction**: Get detailed insights about cyber threats mentioned in the article
-- **Source Evaluation**: Understand the reliability and credibility of the source
-- **MITRE ATT&CK Mapping**: Automatically identify techniques mentioned in the article
-- **Critical Infrastructure Impact**: Evaluate relevance to critical infrastructure sectors
-- **Cached Results**: Save API costs by reusing previous analyses
-- **Export Options**: Download reports in various formats (JSON, CSV, Markdown, PDF)
-- **Modern Dark Cyber Theme**: Clean, professional interface designed for cybersecurity professionals
-
-## Tech Stack
-
-- Python 3.9+
-- Flask web framework
-- OpenAI API for AI analysis
-- HTMX for dynamic UI updates
-- Bootstrap 5 with custom dark cyber theme
-- SQLite database for caching
-
-## Installation
-
-1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment:
-   - Windows: `venv\Scripts\activate`
-   - macOS/Linux: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Set up your OpenAI API key in `.env` file or environment variables
-6. Run the app: `python app.py`
-
-## Usage
-
-1. Open the application in your browser (default: http://localhost:5000)
-2. Enter a URL to a cybersecurity article
-3. Select the appropriate OpenAI model for analysis
-4. View the comprehensive threat intelligence report
-5. Access analysis history through the History page in the navigation menu
-
-## Design System
-
-The application uses a custom-built dark cyber theme with the following design principles:
-
-- **Dark Mode First**: Optimized for low-light environments where cybersecurity professionals often work
-- **Information Hierarchy**: Clear visual distinction between different types of information
-- **Readability**: High contrast text and proper spacing for extended reading sessions
-- **Subtle Animation**: Used sparingly to indicate state changes without distraction
-- **Consistency**: Uniform styling across all components and pages
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-# Artificial Cyber Intelligence Analyst 
 [![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE.md)
-
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=CenterforCyberIntelligence.ThreatInsight-Analyzer)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![GitHub Stars](https://img.shields.io/github/stars/CenterforCyberIntelligence/ThreatInsight-Analyzer.svg?style=flat&color=8B7355)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/CenterforCyberIntelligence/ThreatInsight-Analyzer.svg?style=flat&color=7B886B)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer/network/members)
