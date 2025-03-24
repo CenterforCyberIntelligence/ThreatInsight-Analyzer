@@ -131,6 +131,7 @@ def update_env():
     except Exception as e:
         logging.error(f"Error updating environment variables: {str(e)}")
         return jsonify({"success": False, "message": "An internal error has occurred while updating environment variables."})
+        main
 
 @settings_bp.route('/settings/purge_database', methods=['POST'])
 def purge_database():
@@ -162,8 +163,9 @@ def purge_database():
         
         return jsonify({"success": True, "message": "Database purged successfully"})
     except Exception as e:
-        logging.error(f"Error purging database: {str(e)}")
-        return jsonify({"success": False, "message": "An internal error has occurred while purging the database."})
+        logging.error("Error purging database", exc_info=True)
+        return jsonify({"success": False, "message": "An internal error has occurred. Please try again later."})
+        main
 
 @settings_bp.route('/settings/restart', methods=['POST'])
 def restart():
@@ -174,3 +176,4 @@ def restart():
     except Exception as e:
         logging.error(f"Error restarting server: {str(e)}")
         return jsonify({"success": False, "message": "An internal error has occurred while restarting the server."})
+        main
