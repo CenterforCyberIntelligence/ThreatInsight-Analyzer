@@ -1,38 +1,50 @@
 <div class="card analysis-loading" id="analysis-loading">
     <div class="card-header">
-        <h2 class="card-title"><i class="fas fa-spinner fa-spin"></i> Analysis in Progress</h2>
+        <h5 class="card-title mb-0">
+            <i class="bi bi-gear-fill me-2 fa-spin"></i> Analysis in Progress
+        </h5>
     </div>
     <div class="card-body">
         <div class="progress-steps">
             <div class="progress-step {{ 'active' if step == 'extract' or step == 'analyze' or step == 'complete' else '' }} {{ 'complete' if step != 'extract' else '' }}"
                 id="extract-step">
                 <div class="step-icon" id="extract-icon">
-                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'extract' else 'fa-check' if step != 'extract' else 'fa-file-alt' }}"></i>
+                    <i class="bi {{ 'bi-arrow-repeat fa-spin' if step == 'extract' else 'bi-check-lg' if step != 'extract' else 'bi-file-text' }}"></i>
                 </div>
                 <div class="step-label">Extracting Content</div>
             </div>
             <div class="progress-step {{ 'active' if step == 'analyze' or step == 'complete' else '' }} {{ 'complete' if step == 'complete' else '' }}"
                 id="analyze-step">
                 <div class="step-icon" id="analyze-icon">
-                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'analyze' else 'fa-check' if step == 'complete' else 'fa-brain' }}"></i>
+                    <i class="bi {{ 'bi-arrow-repeat fa-spin' if step == 'analyze' else 'bi-check-lg' if step == 'complete' else 'bi-diagram-3' }}"></i>
                 </div>
                 <div class="step-label">AI Analysis</div>
             </div>
             <div class="progress-step {{ 'active' if step == 'complete' else '' }}"
                 id="complete-step">
                 <div class="step-icon" id="complete-icon">
-                    <i class="fas {{ 'fa-spinner fa-spin' if step == 'complete' else 'fa-check' }}"></i>
+                    <i class="bi {{ 'bi-arrow-repeat fa-spin' if step == 'complete' else 'bi-check-lg' }}"></i>
                 </div>
                 <div class="step-label">Generating Report</div>
             </div>
         </div>
-        <div class="progress-message" id="progress-message">
+        
+        <div class="alert alert-info mt-4 text-center">
             {% if step == 'extract' %}
-            Extracting content from {{ url }}...
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-repeat fa-spin me-2"></i>
+                <span>Extracting content from {{ url }}...</span>
+            </div>
             {% elif step == 'analyze' %}
-            Analyzing content with {{ model }}...
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-repeat fa-spin me-2"></i>
+                <span>Analyzing content with {{ model }}...</span>
+            </div>
             {% elif step == 'complete' %}
-            Generating report...
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-repeat fa-spin me-2"></i>
+                <span>Generating report...</span>
+            </div>
             {% endif %}
         </div>
         
@@ -44,4 +56,14 @@
         <div hx-get="/analysis/result?url={{ url }}&model={{ model }}" hx-trigger="load delay:500ms" hx-target="#analysis-loading" hx-swap="outerHTML"></div>
         {% endif %}
     </div>
-</div> 
+</div>
+
+<style>
+.fa-spin {
+    animation: fa-spin 2s linear infinite;
+}
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style> 

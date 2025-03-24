@@ -5,243 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analysis History | Artificial Cyber Intelligence Analyst™</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Dynamic Heading Font -->
+    <link href="https://fonts.googleapis.com/css2?family={{ heading_font }}:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', t=current_time) }}">
-    <!-- HTMX Library -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- CSS Variable for Font -->
     <style>
-        /* Include the same CSS as index.html */
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #64748b;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --dark: #1e293b;
-            --light: #f8fafc;
-            --gray-100: #f1f5f9;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e1;
-            --gray-400: #94a3b8;
-            --gray-500: #64748b;
-            --gray-600: #475569;
-            --gray-700: #334155;
-            --gray-800: #1e293b;
-            --gray-900: #0f172a;
-            --border-radius: 0.375rem;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            line-height: 1.6;
-            color: var(--gray-800);
-            background-color: var(--gray-100);
-            padding: 0;
-            margin: 0;
-        }
-
-        /* Additional styles for history page */
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        .history-table th,
-        .history-table td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .history-table th {
-            background-color: var(--gray-50);
-            font-weight: 600;
-            color: var(--gray-700);
-        }
-
-        .history-table tr:hover {
-            background-color: var(--gray-50);
-        }
-
-        .history-table .title-cell {
-            max-width: 300px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .history-table .url-cell {
-            max-width: 250px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .history-table .date-cell {
-            white-space: nowrap;
-        }
-
-        .history-table .action-cell {
-            text-align: right;
-        }
-
-        .history-table .action-btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            border-radius: var(--border-radius);
-            background-color: var(--primary);
-            color: white;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .history-table .action-btn:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .empty-history {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: var(--gray-500);
-        }
-
-        .empty-history i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--gray-800);
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .back-link i {
-            margin-right: 0.5rem;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
+            --app-heading-font: '{{ heading_font }}';
         }
     </style>
+    <!-- HTMX Library -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container">
-            <div class="navbar-content">
-                <a href="/" class="logo">
-                    <i class="fas fa-shield-alt"></i>
-                    Center for Cyber Intelligence | 
-                    <span style="font-weight: 400; opacity: 0.8;">  Artificial Cyber Intelligence Analyst</span>
-                </a>
-                <div class="model-badge">
-                    <i class="fas fa-brain"></i>
-                    Powered by OpenAI
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand cyber-brand" href="/">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                Center for Cyber Intelligence <span class="cyber-accent">Artificial Cyber Intelligence Analyst™</span>
+            </a>
+            <div class="d-flex">
+                <span class="powered-by-badge">
+                    <i class="bi bi-cpu-fill me-1"></i> Powered by OpenAI
+                </span>
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/">Home</a>
+                    <a class="nav-link" href="/statistics">Statistics</a>
+                    <a class="nav-link active" href="/history">History</a>
+                    <a class="nav-link" href="/settings">Settings</a>
                 </div>
-                <nav class="nav-links">
-                    <a href="/" class="nav-link">Home</a>
-                    <a href="/statistics" class="nav-link">Statistics</a>
-                    <a href="/settings" class="nav-link">Settings</a>
-                </nav>
+                <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="header-support-btn">
+                    <i class="bi bi-cup-hot-fill"></i>
+                    Support
+                </a>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <div class="main">
-        <div class="container">
-            <div class="page-header">
-                <h1 class="page-title">Analysis History</h1>
-                <a href="/" class="back-link">
-                    <i class="fas fa-arrow-left"></i> Back to Analyzer
-                </a>
-            </div>
+    <div id="main-content" class="container mt-4">
+        <div class="page-header">
+            <h1 class="page-title">Analysis History</h1>
+            <a href="/" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Analyzer
+            </a>
+        </div>
 
-            <div class="card">
-                <div class="card-body">
-                    {% if analyses %}
-                        <table class="history-table">
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>URL</th>
-                                    <th>Date</th>
-                                    <th>Model</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for analysis in analyses %}
-                                <tr>
-                                    <td class="title-cell">{{ analysis.title }}</td>
-                                    <td class="url-cell">
-                                        <a href="{{ analysis.url }}" target="_blank" title="{{ analysis.url }}">
-                                            {{ analysis.url }}
-                                        </a>
-                                    </td>
-                                    <td class="date-cell">{{ analysis.created_at }}</td>
-                                    <td>{{ analysis.model }}</td>
-                                    <td class="action-cell">
-                                        <a href="/?url={{ analysis.url }}" class="action-btn">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <div class="empty-history">
-                            <i class="fas fa-history"></i>
-                            <h2>No Analysis History</h2>
-                            <p>You haven't analyzed any articles yet. Go back to the analyzer to get started.</p>
-                        </div>
-                    {% endif %}
-                </div>
+        <div class="card">
+            <div class="card-body">
+                {% if analyses %}
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>URL</th>
+                                <th>Date</th>
+                                <th>Model</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for analysis in analyses %}
+                            <tr>
+                                <td class="title-cell">{{ analysis.title }}</td>
+                                <td class="url-cell">
+                                    <a href="{{ analysis.url }}" target="_blank" title="{{ analysis.url }}">
+                                        {{ analysis.url }}
+                                    </a>
+                                </td>
+                                <td class="date-cell">{{ analysis.created_at }}</td>
+                                <td>{{ analysis.model }}</td>
+                                <td class="action-cell">
+                                    <a href="/?url={{ analysis.url }}" class="action-btn">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="empty-history">
+                        <i class="fas fa-history"></i>
+                        <h2>No Analysis History</h2>
+                        <p>You haven't analyzed any articles yet. Go back to the analyzer to get started.</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-copyright">
-                    <p>&copy; 2025 <a href="https://www.centerforcyberintelligence.org" target="_blank">Center for Cyber Intelligence</a>. All Rights Reserved.</p>
-                </div>
-                <div class="footer-links">
-                    <a href="/">Home</a>
-                    <a href="/statistics">Statistics</a>
-                    <a href="/settings">Settings</a>
-                </div>
-            </div>
+    <div class="footer-links">
+        <div class="footer-nav">
+            <a href="/">Home</a>
+            <a href="/statistics">Statistics</a>
+            <a href="/history" class="active">History</a>
+            <a href="/settings">Settings</a>
         </div>
-    </footer>
+        <div class="footer-info">
+            <span class="copyright">© 2025 Center for Cyber Intelligence</span>
+            <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="bmc-button">
+                <i class="bi bi-cup-hot-fill"></i>
+                Support This Project
+            </a>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

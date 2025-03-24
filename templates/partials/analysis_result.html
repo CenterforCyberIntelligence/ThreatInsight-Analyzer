@@ -1,1687 +1,891 @@
 <!-- Wrap everything in a single container so it all gets removed on close -->
-<div id="analysis-report-wrapper" hx-on:load="initializeAnalysisReport()" hx-trigger="load">
-    <!-- Add the cached banner at the top if result is cached -->
+<div id="analysis-report-wrapper" hx-trigger="load" hx-get="/api/check_extraction_status/{{ url }}" hx-swap="none">
     {% if cached %}
-    <div class="cached-banner">
-        <i class="fas fa-database"></i> Cached result from {{ analyzed_at }}
-        {% if not refreshed %}
-        <span class="banner-note">Use the refresh button for latest processing improvements</span>
-        {% endif %}
+    <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-clock-history me-2"></i> 
+            <strong class="me-2">Cached Result:</strong> This analysis was performed on {{ created_at }}
+            <button type="button" class="btn btn-primary ms-3" data-bs-toggle="modal" data-bs-target="#refreshModal">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Analysis
+            </button>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Refresh Confirmation Modal -->
+    <div class="modal fade" id="refreshModal" tabindex="-1" aria-labelledby="refreshModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="refreshModalLabel">Confirm Refresh</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to refresh this analysis? This will consume additional API tokens and may take a minute to complete.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" 
+                            hx-post="/analyze?refresh=true" 
+                            hx-vals='{"url": "{{ url }}", "model": "{{ model }}"}' 
+                            hx-target="#analysis-container"
+                            hx-indicator="#loading-indicator"
+                            data-bs-dismiss="modal">
+                        Refresh Analysis
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     {% endif %}
     
     {% if refreshed %}
-    <div class="refreshed-banner">
-        <i class="fas fa-sync-alt"></i> Analysis updated on {{ analyzed_at }}
+    <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> Analysis was refreshed successfully on {{ created_at }}
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
-
-    <!-- Custom modal for refresh confirmation and loading -->
-    <div id="refresh-modal" class="custom-modal">
-        <div class="modal-content">
-            <div id="modal-confirmation" class="modal-section">
-                <h3><i class="fas fa-sync-alt"></i> Refresh Analysis</h3>
-                <p>This will reanalyze the article with the latest processing techniques. Continue?</p>
-                <div class="modal-actions">
-                    <button id="modal-cancel" class="modal-btn cancel-btn">Cancel</button>
-                    <button id="modal-confirm" class="modal-btn confirm-btn">OK</button>
-                </div>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Threat Analysis Report</h5>
+            <div>
+                <span class="badge bg-info me-2">{{ model }}</span>
+                {% if success %}
+                <span class="badge bg-success">Completed</span>
+                {% else %}
+                <span class="badge bg-danger">Failed</span>
+                {% endif %}
             </div>
-            <div id="modal-loading" class="modal-section" style="display: none;">
-                <div class="loading-animation">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <p>Refreshing analysis...</p>
-                <p class="processing-note">This may take up to 30 seconds.</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card analysis-result" id="analysis-result-container">
-        <div class="card-header">
-            <h2 class="card-title"><i class="fas fa-file-alt"></i> Analysis Report</h2>
-            <button class="close-btn" hx-get="/analyze-form" hx-target="#analysis-report-wrapper" hx-swap="outerHTML">
-                <i class="fas fa-times"></i>
-            </button>
         </div>
         <div class="card-body">
-            <div class="result-header">
-                <div class="result-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">Source:</span>
-                        <a href="{{ url }}" target="_blank" class="meta-value">{{ url|truncate(60) }}</a>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Model:</span>
-                        <span class="meta-value">{{ model }}</span>
-                    </div>
-                    {% if cached %}
-                    <div class="meta-item">
-                        <span class="meta-label">Status:</span>
-                        <span class="meta-value cached-result">
-                            <i class="fas fa-bolt"></i> Instant (Cached)
-                        </span>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="result-actions">
-                    <button class="btn-icon" id="copy-btn" title="Copy to clipboard">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                    <button class="btn-icon" id="print-btn" title="Print report">
-                        <i class="fas fa-print"></i>
-                    </button>
-                    {% if cached %}
-                    <button class="btn-icon refresh-btn" 
-                            id="refresh-btn" 
-                            title="Refresh analysis with latest processing">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    {% endif %}
-                    
-                    <!-- Export Dropdown -->
-                    <div class="dropdown">
-                        <button class="btn-icon dropdown-toggle" id="export-dropdown-btn" title="Export analysis">
-                            <i class="fas fa-download"></i>
+            <div class="mb-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <h6 class="card-subtitle">
+                        Source: <a href="{{ url }}" target="_blank">{{ url }}</a>
+                    </h6>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('analysis-content')">
+                            <i class="bi bi-clipboard"></i>
                         </button>
-                        <div class="dropdown-menu" id="export-dropdown-menu">
-                            <a href="/export/json?url={{ url | urlencode }}" class="dropdown-item" download>
-                                <i class="fas fa-file-code"></i> JSON
-                            </a>
-                            <a href="/export/csv?url={{ url | urlencode }}" class="dropdown-item" download>
-                                <i class="fas fa-file-csv"></i> CSV
-                            </a>
-                            <a href="/export/markdown?url={{ url | urlencode }}" class="dropdown-item" download>
-                                <i class="fas fa-file-alt"></i> Markdown
-                            </a>
-                            <a href="/export/pdf?url={{ url | urlencode }}" class="dropdown-item" download>
-                                <i class="fas fa-file-pdf"></i> PDF
-                            </a>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="printAnalysis()">
+                            <i class="bi bi-printer"></i>
+                        </button>
+                    {% if cached %}
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#refreshModal">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    {% endif %}
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><button class="dropdown-item" hx-get="/export/{{ url }}?format=json" hx-target="#export-status">JSON</button></li>
+                                <li><button class="dropdown-item" hx-get="/export/{{ url }}?format=csv" hx-target="#export-status">CSV</button></li>
+                                <li><button class="dropdown-item" hx-get="/export/{{ url }}?format=md" hx-target="#export-status">Markdown</button></li>
+                                <li><button class="dropdown-item" hx-get="/export/{{ url }}?format=pdf" hx-target="#export-status">PDF</button></li>
+                            </ul>
                         </div>
                     </div>
-                    
-                    {% if api_details %}
-                    <button class="btn-icon" id="toggle-api-details" title="Show API details">
-                        <i class="fas fa-code"></i>
-                    </button>
-                    {% endif %}
                 </div>
+                <div id="export-status"></div>
             </div>
             
+            <!-- API Details Section -->
             {% if api_details %}
-            <div class="api-details-container" id="api-details-panel" style="display: none;">
-                <div class="api-details-header">
-                    <h3><i class="fas fa-exchange-alt"></i> API Request Details</h3>
-                    <span class="api-details-subtitle">{% if cached %}Cached Request (Estimated){% else %}Live Request{% endif %}</span>
-                </div>
-                <div class="api-details-content">
-                    <!-- Model Info -->
-                    <div class="api-details-section">
-                        <div class="api-details-header">Model</div>
-                        <div class="api-details-content">
-                            {% if api_details and api_details.model %}
-                                {% set model_parts = api_details.model.split('-') %}
-                                {% if model_parts|length >= 2 %}
-                                    {{ model_parts[0] }}-{{ model_parts[1] }}
-                                {% else %}
-                                    {{ api_details.model }}
-                                {% endif %}
-                            {% else %}
-                                Not available
-                            {% endif %}
-                        </div>
+            <div class="api-details mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div><strong>Model:</strong> {{ api_details.response.model if api_details.response is not mapping else api_details.response['model'] }}</div>
+                        <div><strong>Input Tokens:</strong> {{ api_details.response.input_tokens if api_details.response is not mapping else api_details.response['input_tokens'] }}</div>
+                        <div><strong>Output Tokens:</strong> {{ api_details.response.output_tokens if api_details.response is not mapping else api_details.response['output_tokens'] }}</div>
+                        <div><strong>Total Tokens:</strong> {{ api_details.response.total_tokens if api_details.response is not mapping else api_details.response['total_tokens'] }}</div>
                     </div>
-                    
-                    <!-- API Metrics -->
-                    <div class="api-details-section">
-                        <div class="api-details-header">Metrics</div>
-                        <div class="api-details-content">
-                            {% if api_details and api_details.response %}
-                                <div class="api-metrics">
-                                    <div class="api-metric">
-                                        <span class="metric-label">Input Tokens:</span>
-                                        <span class="metric-value">{{ api_details.response.input_tokens }}</span>
-                                    </div>
-                                    <div class="api-metric">
-                                        <span class="metric-label">Output Tokens:</span>
-                                        <span class="metric-value">{{ api_details.response.output_tokens }}</span>
-                                    </div>
-                                    <div class="api-metric">
-                                        <span class="metric-label">Total Tokens:</span>
-                                        <span class="metric-value">{{ api_details.response.total_tokens }}</span>
-                                    </div>
-                                </div>
-                            {% else %}
-                                Not available
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Request -->
-                    <div class="api-details-section">
-                        <div class="api-details-header">Request</div>
-                        <div class="api-details-content">
-                            {% if api_details and api_details.request %}
-                                <pre><code class="language-json">{{ api_details.request | tojson(indent=4) }}</code></pre>
-                            {% else %}
-                                Not available
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Completion Preview -->
-                    <div class="api-details-section">
-                        <div class="api-details-header">Completion</div>
-                        <div class="api-details-content">
-                            {% if api_details and api_details.response %}
-                                <div class="api-code-preview">{{ analysis }}</div>
-                            {% else %}
-                                Not available
-                            {% endif %}
-                        </div>
+                    <div class="col-md-6">
+                        <div><strong>Extraction Time:</strong> {{ "{:.2f}".format(extraction_time) if extraction_time is defined else "N/A" }}s</div>
+                        <div><strong>Analysis Time:</strong> {{ "{:.2f}".format(analysis_time) if analysis_time is defined else "N/A" }}s</div>
+                        <div><strong>Content Length:</strong> {{ content_length if content_length is defined else "N/A" }} chars</div>
                     </div>
                 </div>
             </div>
             {% endif %}
             
-            <div class="result-content">
-                <div class="tabbed-view">
-                    <div class="tabs">
-                        <button class="tab-button active" id="btn-formatted">Analysis Report</button>
-                        <button class="tab-button" id="btn-raw">Raw Output</button>
+            <!-- Token Usage Section -->
+            <div class="mb-4">
+                <div class="row g-3">
+                    {% if input_tokens is defined and input_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Input Tokens</h5>
+                                    <p class="display-6">{{ input_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif api_details %}
+                        {% set response_input_tokens = api_details.response.input_tokens if api_details.response is not mapping else api_details.response['input_tokens'] if 'input_tokens' in api_details.response else 0 %}
+                        {% if response_input_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Input Tokens</h5>
+                                    <p class="display-6">{{ response_input_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if output_tokens is defined and output_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Output Tokens</h5>
+                                    <p class="display-6">{{ output_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif api_details %}
+                        {% set response_output_tokens = api_details.response.output_tokens if api_details.response is not mapping else api_details.response['output_tokens'] if 'output_tokens' in api_details.response else 0 %}
+                        {% if response_output_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Output Tokens</h5>
+                                    <p class="display-6">{{ response_output_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if total_tokens is defined and total_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Total Tokens</h5>
+                                    <p class="display-6">{{ total_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif api_details %}
+                        {% set response_total_tokens = api_details.response.total_tokens if api_details.response is not mapping else api_details.response['total_tokens'] if 'total_tokens' in api_details.response else 0 %}
+                        {% if response_total_tokens > 0 %}
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">Total Tokens</h5>
+                                    <p class="display-6">{{ response_total_tokens }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Nav tabs for formatted vs raw view -->
+            <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="formatted-tab" data-bs-toggle="tab" href="#formatted" role="tab" aria-controls="formatted" aria-selected="true">Formatted Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="raw-tab" data-bs-toggle="tab" href="#raw" role="tab" aria-controls="raw" aria-selected="false">Raw Output</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="indicators-tab" data-bs-toggle="tab" href="#indicators" role="tab" aria-controls="indicators" aria-selected="false">
+                        Indicators
+                        {% if indicators and indicators.total_count > 0 %}
+                        <span class="badge bg-primary ms-1">{{ indicators.total_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="critical-sectors-tab" data-bs-toggle="tab" href="#critical-sectors" role="tab" aria-controls="critical-sectors" aria-selected="false">Critical Sectors</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="mitre-tab" data-bs-toggle="tab" href="#mitre" role="tab" aria-controls="mitre" aria-selected="false">
+                                MITRE ATT&CK Techniques
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- Tab content -->
+            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="analysis-content">
+                <!-- Formatted Analysis Tab -->
+                <div class="tab-pane fade show active" id="formatted" role="tabpanel" aria-labelledby="formatted-tab">
+                    {% if structured_analysis %}
+                    
+                    <!-- Summary -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-file-text me-2"></i>Summary</h5>
+                        {% if structured_analysis and structured_analysis.summary %}
+                            <p>{{ structured_analysis.summary }}</p>
+                                                        {% else %}
+                            <div class="alert alert-warning">
+                                No summary available.
+                            </div>
+                                                        {% endif %}
+                    </div>
+
+                    <!-- Source Evaluation -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-shield-check me-2"></i>Source Evaluation</h5>
+                        {% if structured_analysis and structured_analysis.source_evaluation %}
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">Reliability</div>
+                                        <div class="card-body text-center">
+                                            {% if structured_analysis.source_evaluation.reliability %}
+                                                {% if structured_analysis.source_evaluation.reliability is mapping %}
+                                                    {% set reliability_level = structured_analysis.source_evaluation.reliability.LEVEL if structured_analysis.source_evaluation.reliability.LEVEL is defined else structured_analysis.source_evaluation.reliability.level %}
+                                                    {% else %}
+                                                    {% set reliability_level = structured_analysis.source_evaluation.reliability %}
+                                                    {% endif %}
+                                                
+                                                {% if reliability_level|upper == 'HIGH' %}
+                                                    <span class="badge bg-success fs-5">HIGH</span>
+                                                {% elif reliability_level|upper == 'MEDIUM' %}
+                                                    <span class="badge bg-warning text-dark fs-5">MEDIUM</span>
+                                                {% elif reliability_level|upper == 'LOW' %}
+                                                    <span class="badge bg-danger fs-5">LOW</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary fs-5">{{ reliability_level }}</span>
+                                                    {% endif %}
+                                                
+                                                {% if structured_analysis.source_evaluation.reliability is mapping and structured_analysis.source_evaluation.reliability.JUSTIFICATION is defined %}
+                                                    <div class="mt-2 small text-muted">{{ structured_analysis.source_evaluation.reliability.JUSTIFICATION }}</div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary fs-5">Unknown</span>
+                                            {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">Credibility</div>
+                                        <div class="card-body text-center">
+                                            {% if structured_analysis.source_evaluation.credibility %}
+                                                {% if structured_analysis.source_evaluation.credibility is mapping %}
+                                                    {% set credibility_level = structured_analysis.source_evaluation.credibility.LEVEL if structured_analysis.source_evaluation.credibility.LEVEL is defined else structured_analysis.source_evaluation.credibility.level %}
+                                                {% else %}
+                                                    {% set credibility_level = structured_analysis.source_evaluation.credibility %}
+                        {% endif %}
+                        
+                                                {% if credibility_level|upper == 'HIGH' %}
+                                                    <span class="badge bg-success fs-5">HIGH</span>
+                                                {% elif credibility_level|upper == 'MEDIUM' %}
+                                                    <span class="badge bg-warning text-dark fs-5">MEDIUM</span>
+                                                {% elif credibility_level|upper == 'LOW' %}
+                                                    <span class="badge bg-danger fs-5">LOW</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary fs-5">{{ credibility_level }}</span>
+                                                {% endif %}
+                                                
+                                                {% if structured_analysis.source_evaluation.credibility is mapping and structured_analysis.source_evaluation.credibility.JUSTIFICATION is defined %}
+                                                    <div class="mt-2 small text-muted">{{ structured_analysis.source_evaluation.credibility.JUSTIFICATION }}</div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary fs-5">Unknown</span>
+                                            {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">Source Type</div>
+                                        <div class="card-body text-center">
+                                            <span class="badge bg-info text-dark fs-5">{{ structured_analysis.source_evaluation.source_type }}</span>
+                                </div>
+                            </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                No source evaluation available.
+                        </div>
+                        {% endif %}
                     </div>
                     
-                    <!-- Formatted View -->
-                    <div id="formatted" class="tab-content active">
-                        {% if structured_analysis.summary %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                Summary
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">{{ structured_analysis.summary|safe }}</div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.source_evaluation %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                Source Evaluation
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">
-                                <div class="source-eval-minimal">
-                                    <div class="eval-row">
-                                        <span class="eval-label">Reliability:</span>
-                                        <span class="eval-value {{ structured_analysis.source_evaluation.reliability.level|lower }}">
-                                            {{ structured_analysis.source_evaluation.reliability.level }}
-                                        </span>
-                                        <span class="eval-detail">{{ structured_analysis.source_evaluation.reliability.justification|safe|capitalize }}</span>
-                                    </div>
-                                    
-                                    <div class="eval-row">
-                                        <span class="eval-label">Credibility:</span>
-                                        <span class="eval-value {{ structured_analysis.source_evaluation.credibility.level|lower }}">
-                                            {{ structured_analysis.source_evaluation.credibility.level }}
-                                        </span>
-                                        <span class="eval-detail">{{ structured_analysis.source_evaluation.credibility.justification|safe|capitalize }}</span>
-                                    </div>
-                                    
-                                    <div class="eval-row">
-                                        <span class="eval-label">Source Type:</span>
-                                        <span class="eval-value source-type">{{ structured_analysis.source_evaluation.source_type|safe }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.mitre_techniques and structured_analysis.mitre_techniques|length > 0 %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                MITRE ATT&CK Techniques
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">
-                                <div class="mitre-table-container">
-                                    <table class="mitre-table">
+                    <!-- Threat Actors -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-people me-2"></i>Threat Actors</h5>
+                        {% if structured_analysis and structured_analysis.threat_actors and structured_analysis.threat_actors|length > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
                                         <thead>
                                             <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Description</th>
+                                                <th>Actor</th>
+                                                <th>Confidence</th>
+                                            <th>Details</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% for technique in structured_analysis.mitre_techniques %}
+                                            {% for actor in structured_analysis.threat_actors %}
                                             <tr>
-                                                <td class="mitre-id-cell">
-                                                    {% if technique.id %}
-                                                        {% if '/' in technique.id %}
-                                                            {% set id_parts = technique.id.split('/') %}
-                                                            {% set technique_id = id_parts[0] %}
-                                                            {% set subtechnique_id = id_parts[1] %}
-                                                            <a href="https://attack.mitre.org/techniques/{{ technique_id }}/{{ subtechnique_id }}/" target="_blank" class="mitre-id">{{ technique.id }}</a>
-                                                        {% else %}
-                                                            <a href="https://attack.mitre.org/techniques/{{ technique.id }}/" target="_blank" class="mitre-id">{{ technique.id }}</a>
-                                                        {% endif %}
-                                                    {% else %}
-                                                        <span class="no-id">Unknown</span>
+                                                <td>
+                                                    <strong>{{ actor.name }}</strong>
+                                                    {% if actor.aliases and actor.aliases|length > 0 %}
+                                                        <div class="small text-muted">
+                                                            aka: {{ actor.aliases|join(', ') }}
+                                                        </div>
                                                     {% endif %}
                                                 </td>
-                                                <td class="mitre-name-cell">{{ technique.name|safe }}</td>
-                                                <td class="mitre-desc-cell">
-                                                    {% if technique.description %}
-                                                        {{ technique.description|safe }}
+                                                <td>
+                                                    {% if actor.confidence == 'High' %}
+                                                        <span class="badge bg-success">{{ actor.confidence }}</span>
+                                                    {% elif actor.confidence == 'Medium' %}
+                                                        <span class="badge bg-warning text-dark">{{ actor.confidence }}</span>
+                                                    {% elif actor.confidence == 'Low' %}
+                                                        <span class="badge bg-danger">{{ actor.confidence }}</span>
                                                     {% else %}
-                                                        <span class="no-desc">No description available</span>
+                                                        <span class="badge bg-secondary">{{ actor.confidence }}</span>
                                                     {% endif %}
                                                 </td>
+                                                <td>{{ actor.description }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                No threat actors identified in this analysis.
                         </div>
                         {% endif %}
-                        
-                        {% if structured_analysis.key_insights and structured_analysis.key_insights|length > 0 %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                Key Threat Intelligence Insights
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">
-                                <div class="insights-minimal">
-                                    {% for insight in structured_analysis.key_insights %}
-                                    <div class="insight-item">{{ insight|safe }}</div>
+                    </div>
+                    
+                    <!-- Key Insights -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-lightbulb me-2"></i>Key Threat Intelligence Insights</h5>
+                        {% if structured_analysis and structured_analysis.key_insights and structured_analysis.key_insights|length > 0 %}
+                            <ul class="list-group mb-3">
+                                {% for insight in structured_analysis.key_insights %}
+                                    <li class="list-group-item">{{ insight }}</li>
                                     {% endfor %}
-                                </div>
+                            </ul>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                No key insights identified in this analysis.
                             </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.potential_issues %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                Potential Bias or Issues
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">
-                                <div class="insights-minimal">
-                                    {% for issue in structured_analysis.potential_issues %}
-                                    <div class="insight-item">{{ issue|safe }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.relevance %}
-                        <div class="analysis-section ai-minimalist">
-                            <h3 class="ai-section-title">
-                                Relevance to U.S. Government
-                                <span class="ai-indicator" title="AI-generated using {{ model }}">
-                                    <i class="fas fa-robot"></i>
-                                </span>
-                            </h3>
-                            <div class="ai-content">
-                                <div class="relevance-minimal">
-                                    <div class="relevance-score-badge score-{{ structured_analysis.relevance.score }}">
-                                        {{ structured_analysis.relevance.score }}/5
-                                    </div>
-                                    <div class="relevance-justification">{{ structured_analysis.relevance.justification|safe }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.indicators %}
-                        <div class="analysis-section">
-                            <h3>Extracted Indicators of Compromise (Automated)</h3>
-                            <div class="indicators-summary">
-                                <span class="indicator-count">{{ structured_analysis.indicators.total_count }} total indicators found</span>
-                                <span class="extraction-method">(Automatically extracted using pattern recognition)</span>
-                            </div>
-                            
-                            <!-- Network IOC Section -->
-                            {% set network_category = structured_analysis.indicators.categories[0] %}
-                            {% if network_category.types|selectattr('count', 'gt', 0)|list|length > 0 %}
-                            <div class="indicator-category">
-                                <h4 class="category-name">Network Indicators</h4>
-                                <div class="ioc-table-container">
-                                    <table class="ioc-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Type</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for type in network_category.types %}
-                                            {% if type.count > 0 %}
-                                            {% for value in type.indicator_values %}
-                                            <tr>
-                                                <td class="ioc-type">{{ type.type }}</td>
-                                                <td class="ioc-value">{{ value }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                            {% endif %}
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- File IOC Section -->
-                            {% set file_category = structured_analysis.indicators.categories[1] %}
-                            {% if file_category.types|selectattr('count', 'gt', 0)|list|length > 0 %}
-                            <div class="indicator-category">
-                                <h4 class="category-name">File Indicators</h4>
-                                <div class="ioc-table-container">
-                                    <table class="ioc-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Type</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for type in file_category.types %}
-                                            {% if type.count > 0 %}
-                                            {% for value in type.indicator_values %}
-                                            <tr>
-                                                <td class="ioc-type">{{ type.type }}</td>
-                                                <td class="ioc-value">{{ value }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                            {% endif %}
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- Email Section -->
-                            {% set other_category = structured_analysis.indicators.categories[2] %}
-                            {% set email_type = other_category.types[0] %}
-                            {% if email_type.count > 0 %}
-                            <div class="indicator-category">
-                                <h4 class="category-name">Email Addresses</h4>
-                                <div class="ioc-table-container">
-                                    <table class="ioc-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for value in email_type.indicator_values %}
-                                            <tr>
-                                                <td class="ioc-value">{{ value }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- CVE Section -->
-                            {% set cve_type = other_category.types[1] %}
-                            {% if cve_type.count > 0 %}
-                            <div class="indicator-category">
-                                <h4 class="category-name">CVE IDs</h4>
-                                <div class="cve-container">
-                                    {% for value in cve_type.indicator_values %}
-                                    <div class="cve-item">
-                                        <a href="https://nvd.nist.gov/vuln/detail/{{ value }}" target="_blank" class="cve-link">{{ value }}</a>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            <!-- MITRE ATT&CK Techniques Section -->
-                            {% set mitre_type = other_category.types[2] %}
-                            {% if mitre_type.count > 0 %}
-                            <div class="indicator-category">
-                                <h4 class="category-name">MITRE ATT&CK Techniques (Pattern-Extracted)</h4>
-                                <div class="mitre-table-container">
-                                    <table class="mitre-table simple">
-                                        <thead>
-                                            <tr>
-                                                <th>Technique ID</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for value in mitre_type.indicator_values %}
-                                            <tr>
-                                                <td class="mitre-id-cell">
-                                                    {% if '.' in value %}
-                                                        {% set id_parts = value.split('.') %}
-                                                        {% set main_id = id_parts[0] %}
-                                                        {% set sub_id = id_parts[1]|zfill(3) %}
-                                                        <a href="https://attack.mitre.org/techniques/{{ main_id }}/{{ sub_id }}/" target="_blank" class="mitre-id">{{ value }}</a>
-                                                    {% else %}
-                                                        <a href="https://attack.mitre.org/techniques/{{ value }}/" target="_blank" class="mitre-id">{{ value }}</a>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
-                        <div class="analysis-section">
-                            <h3>Critical Infrastructure Sectors Assessment</h3>
-                            <div class="sectors-grid">
-                                {% for sector in structured_analysis.critical_sectors %}
-                                <div class="sector-item">
-                                    <div class="sector-header">
-                                        <span class="sector-name">{{ sector.name }}</span>
-                                        <span class="sector-score score-{{ sector.score }}">{{ sector.score }}/5</span>
-                                    </div>
-                                    {% if sector.justification %}
-                                    <p class="sector-justification">{{ sector.justification|safe }}</p>
                                     {% endif %}
                                 </div>
+                    
+                    <!-- Potential Source Bias -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-shield-exclamation me-2"></i>Potential Source Bias</h5>
+                        {% if structured_analysis and structured_analysis.potential_bias and structured_analysis.potential_bias|length > 0 %}
+                            <ul class="list-group mb-3">
+                                {% for bias in structured_analysis.potential_bias %}
+                                    <li class="list-group-item">{{ bias }}</li>
                                 {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="alert alert-info">
+                                No significant source bias identified.
                             </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Intelligence Gaps -->
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2"><i class="bi bi-patch-question me-2"></i>Intelligence Gaps</h5>
+                        {% if structured_analysis and structured_analysis.intelligence_gaps and structured_analysis.intelligence_gaps|length > 0 %}
+                            <ul class="list-group mb-3">
+                                {% for gap in structured_analysis.intelligence_gaps %}
+                                    <li class="list-group-item">{{ gap }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="alert alert-info">
+                                No significant intelligence gaps identified.
                         </div>
                         {% endif %}
                     </div>
                     
-                    <!-- Raw View -->
-                    <div id="raw" class="tab-content">
-                        <div class="raw-content" id="raw-content">
-                            <pre>{{ analysis }}</pre>
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Failed to parse analysis data
+                                                    </div>
+                                            {% endif %}
+                                </div>
+                
+                <!-- Raw Output Tab -->
+                <div class="tab-pane fade" id="raw" role="tabpanel" aria-labelledby="raw-tab">
+                    <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-code-slash me-2"></i>Raw Analysis Data</h4>
+                    
+                    {% if analysis %}
+                        <div class="bg-dark text-light p-3 rounded raw-json-container">
+                            <pre class="mb-0"><code id="json-content">{{ analysis }}</code></pre>
+                        </div>
+                        <div class="d-flex justify-content-center mt-3 gap-2">
+                            <button id="copyJsonBtn" class="btn btn-primary" onclick="copyRawJson()">
+                                <i class="bi bi-clipboard me-1"></i> Copy JSON
+                            </button>
+                            <a href="/debug/raw-json?url={{ url | urlencode }}" class="btn btn-secondary">
+                                <i class="bi bi-download me-1"></i> Download Raw JSON
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            Raw analysis text is not available.
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Indicators Tab -->
+                <div class="tab-pane fade" id="indicators" role="tabpanel" aria-labelledby="indicators-tab">
+                    <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-shield-lock me-2"></i>Indicators of Compromise</h4>
+                    
+                    {% if indicators and indicators|length > 0 %}
+                        <ul class="nav nav-tabs mb-3" id="ioc-tabs" role="tablist">
+                            {% for ioc_type, items in indicators.items() %}
+                                {% if items|length > 0 and ioc_type != 'total_count' %}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                        id="ioc-{{ ioc_type }}-tab" 
+                                        data-bs-toggle="tab" 
+                                        data-bs-target="#ioc-{{ ioc_type }}" 
+                                        type="button" 
+                                        role="tab" 
+                                        aria-controls="ioc-{{ ioc_type }}" 
+                                        aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                        {{ ioc_type|capitalize }}
+                                        <span class="badge bg-primary ms-1">{{ items|length }}</span>
+                                    </button>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                        <div class="tab-content" id="ioc-content">
+                            {% for ioc_type, items in indicators.items() %}
+                                {% if items|length > 0 and ioc_type != 'total_count' %}
+                                <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                                    id="ioc-{{ ioc_type }}" 
+                                    role="tabpanel" 
+                                    aria-labelledby="ioc-{{ ioc_type }}-tab">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                    <th scope="col">Value</th>
+                                                    <th scope="col">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                {% for item in items %}
+                                                <tr>
+                                                    <td><code>{{ item }}</code></td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="copyToClipboard('{{ item }}')">
+                                                                <i class="bi bi-clipboard"></i>
+                                                            </button>
+                                                            <a href="https://www.virustotal.com/gui/search/{{ item }}" target="_blank" class="btn btn-outline-secondary">
+                                                                <i class="bi bi-search"></i> VT
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                                            {% endfor %}
+                                </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No indicators of compromise were found in this article.
+                            </div>
+                            {% endif %}
+                </div>
+                
+                <!-- Critical Sectors Tab -->
+                <div class="tab-pane fade" id="critical-sectors" role="tabpanel" aria-labelledby="critical-sectors-tab">
+                    <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-building-fill-lock me-2"></i>Critical Infrastructure Impact</h4>
+                    
+                    {% if structured_analysis and structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Sector</th>
+                                        <th>Impact</th>
+                                        <th>Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                    {% for sector in structured_analysis.critical_sectors %}
+                                        <tr>
+                                            <td>{{ sector.name }}</td>
+                                            <td>{{ sector.impact }}</td>
+                                            <td>
+                                                {% if sector.score == 1 %}
+                                                    <span class="badge bg-info">1</span>
+                                                {% elif sector.score == 2 %}
+                                                    <span class="badge bg-primary">2</span>
+                                                {% elif sector.score == 3 %}
+                                                    <span class="badge bg-warning">3</span>
+                                                {% elif sector.score == 4 %}
+                                                    <span class="badge bg-orange">4</span>
+                                                {% elif sector.score == 5 %}
+                                                    <span class="badge bg-danger">5</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ sector.score }}</span>
+                                                {% endif %}
+                                            </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <i class="bi bi-info-circle me-2"></i>Impact Legend
+                                    </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="badge bg-info">1</span> <span class="me-3">Minimal impact</span>
+                                    <span class="badge bg-primary">2</span> <span class="me-3">Low impact</span>
+                                    <span class="badge bg-warning">3</span> <span class="me-3">Moderate impact</span>
+                                    <span class="badge bg-orange">4</span> <span class="me-3">Significant impact</span>
+                                    <span class="badge bg-danger">5</span> <span class="me-3">Severe impact</span>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No critical infrastructure sectors were identified in this analysis.
+                            </div>
+                            {% endif %}
+                </div>
+                
+                <!-- MITRE ATT&CK Tab -->
+                <div class="tab-pane fade" id="mitre" role="tabpanel" aria-labelledby="mitre-tab">
+                    <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-grid-3x3 me-2"></i>MITRE ATT&CK Techniques</h4>
+                    
+                    {% if structured_analysis and structured_analysis.mitre_techniques and structured_analysis.mitre_techniques|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                        <th>ID</th>
+                                        <th>Technique</th>
+                                        <th>Description</th>
+                                        <th>Link</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                    {% for technique in structured_analysis.mitre_techniques %}
+                                        <tr>
+                                            <td><code>{{ technique.id }}</code></td>
+                                            <td>{{ technique.name }}</td>
+                                            <td>{{ technique.description }}</td>
+                                            <td>
+                                                <a href="https://attack.mitre.org/techniques/{{ technique.id }}/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-box-arrow-up-right me-1"></i>View
+                                                </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No MITRE ATT&CK techniques were identified in this analysis.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div> <!-- End of analysis-report-wrapper -->
-
-<head>
-    <!-- Add syntax highlighting library -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
-</head>
+</div>
 
 <script>
-    // Reset initialization flag when the report is closed
-    document.addEventListener('htmx:beforeSwap', function(event) {
-        if (event.detail.target && event.detail.target.id === 'analysis-report-wrapper') {
-            console.log("Resetting analysis report initialization flag");
-            window.analysisReportInitialized = false;
-        }
+// Enhanced logging with timestamps
+function log(message) {
+    const timestamp = new Date().toISOString().substr(11, 8);
+    console.log(`[${timestamp}] [ThreatAnalyzer] ${message}`);
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    log("DOM loaded, setting up Raw tab handlers");
+
+    // Format raw JSON on page load if raw tab is active
+    const activeTab = document.querySelector('.nav-link.active');
+    if (activeTab && activeTab.getAttribute('href') === '#raw') {
+        log("Raw tab active on load, scheduling formatting");
+        // Use multiple delayed attempts to ensure content is loaded
+        setTimeout(formatRawJson, 100);
+        setTimeout(formatRawJson, 500);
+        setTimeout(formatRawJson, 1000);
+    }
+    
+    // Format when switching to raw tab
+    document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(function(tab) {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            if (event.target.getAttribute('href') === '#raw') {
+                log("Raw tab activated, formatting JSON");
+                formatRawJson();
+                // Try again after a delay to ensure content is fully loaded
+                setTimeout(formatRawJson, 300);
+            }
+        });
     });
     
-    // Run initialization on page load
-    initializeAnalysisReport();
+    // Attach event handler to copy button (in addition to the onclick attribute)
+    const copyBtn = document.getElementById('copyJsonBtn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function(e) {
+            // Prevent default to ensure our handler runs
+            e.preventDefault();
+            copyJsonContent();
+        });
+    }
+});
+
+// Main function to format the JSON content
+function formatRawJson() {
+    log("Starting JSON formatting");
+    const jsonContainer = document.querySelector('#json-content');
     
-    // Ensure initialization runs after HTMX content swaps
-    document.addEventListener('htmx:afterSwap', function(event) {
-        console.log("HTMX afterSwap event detected");
-        if (document.getElementById('analysis-report-wrapper')) {
-            console.log("Found analysis-report-wrapper after swap, initializing");
-            window.analysisReportInitialized = false; // Reset flag for new content
-            setTimeout(initializeAnalysisReport, 10);
+    if (!jsonContainer) {
+        log("ERROR: JSON container not found");
+        return;
+    }
+    
+    // Get the raw text content
+    const rawText = jsonContainer.textContent.trim();
+    if (!rawText) {
+        log("ERROR: JSON content is empty");
+        return;
+    }
+    
+    log(`JSON content length: ${rawText.length} chars`);
+    
+    // Try to parse and format the JSON
+    try {
+        log("Attempting to parse JSON");
+        const parsedJson = JSON.parse(rawText);
+        const prettyJson = JSON.stringify(parsedJson, null, 2);
+        log("JSON parsed successfully, applying pretty formatting");
+        
+        // Apply syntax highlighting
+        const highlighted = applySyntaxHighlighting(prettyJson);
+        jsonContainer.innerHTML = highlighted;
+        log("JSON formatting complete");
+    } catch (e) {
+        log(`ERROR parsing JSON: ${e.message}`);
+        log("Falling back to manual formatting");
+        
+        // Apply manual formatting with basic indentation
+        const manuallyFormatted = manuallyFormatJson(rawText);
+        jsonContainer.innerHTML = manuallyFormatted;
+    }
+}
+
+// Apply syntax highlighting to JSON content
+function applySyntaxHighlighting(text) {
+    // Escape HTML characters first
+    let escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Apply color highlighting
+    return escaped.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+        let cls = 'json-number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'json-key';
+            } else {
+                cls = 'json-string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+            cls = 'json-null';
         }
+        return '<span class="' + cls + '">' + match + '</span>';
     });
+}
+
+// Manually format JSON when parsing fails
+function manuallyFormatJson(text) {
+    log("Applying manual JSON formatting");
+    let result = '';
+    let indentLevel = 0;
+    let inString = false;
     
-    // Also listen for HTMX load events
-    document.addEventListener('htmx:load', function(event) {
-        console.log("HTMX load event detected");
-        if (document.getElementById('analysis-report-wrapper')) {
-            console.log("Found analysis-report-wrapper on load, initializing");
-            setTimeout(initializeAnalysisReport, 10);
+    // Simple manual formatter for when JSON.parse fails
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charAt(i);
+        
+        // Handle string literals
+        if (char === '"' && (i === 0 || text.charAt(i-1) !== '\\')) {
+            inString = !inString;
+            result += char;
+            continue;
         }
-    });
-    
-    function initializeAnalysisReport() {
-        try {
-            // Skip initialization if already done
-            if (window.analysisReportInitialized) {
-                console.log("Analysis report already initialized, skipping");
-                return;
-            }
-            
-            console.log("Analysis report initialization started");
-            
-            // Mark as initialized to prevent duplicate initialization
-            window.analysisReportInitialized = true;
-            
-            // Tab switching
-            const btnFormatted = document.getElementById('btn-formatted');
-            const btnRaw = document.getElementById('btn-raw');
-            const formattedContent = document.getElementById('formatted');
-            const rawContent = document.getElementById('raw');
-            
-            if (!btnFormatted || !btnRaw || !formattedContent || !rawContent) {
-                console.error("Tab elements not found:", {
-                    btnFormatted: !!btnFormatted,
-                    btnRaw: !!btnRaw,
-                    formattedContent: !!formattedContent,
-                    rawContent: !!rawContent
-                });
+        
+        if (!inString) {
+            // Handle structural elements
+            if (char === '{' || char === '[') {
+                result += char + '\n' + ' '.repeat((indentLevel + 1) * 2);
+                indentLevel++;
+            } else if (char === '}' || char === ']') {
+                indentLevel = Math.max(0, indentLevel - 1);
+                result += '\n' + ' '.repeat(indentLevel * 2) + char;
+            } else if (char === ',') {
+                result += char + '\n' + ' '.repeat(indentLevel * 2);
+            } else if (char === ':') {
+                result += char + ' ';
             } else {
-                btnFormatted.addEventListener('click', function() {
-                    formattedContent.classList.add('active');
-                    rawContent.classList.remove('active');
-                    btnFormatted.classList.add('active');
-                    btnRaw.classList.remove('active');
-                });
-                
-                btnRaw.addEventListener('click', function() {
-                    rawContent.classList.add('active');
-                    formattedContent.classList.remove('active');
-                    btnRaw.classList.add('active');
-                    btnFormatted.classList.remove('active');
-                });
+                result += char;
             }
-            
-            // Copy button
-            const copyBtn = document.getElementById('copy-btn');
-            const rawContentEl = document.getElementById('raw-content');
-            
-            if (!copyBtn || !rawContentEl) {
-                console.error("Copy button elements not found:", {
-                    copyBtn: !!copyBtn,
-                    rawContentEl: !!rawContentEl
-                });
-            } else {
-                copyBtn.addEventListener('click', function() {
-                    const textToCopy = rawContentEl.innerText;
-                    navigator.clipboard.writeText(textToCopy).then(function() {
-                        const originalIcon = copyBtn.innerHTML;
-                        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-                        setTimeout(function() {
-                            copyBtn.innerHTML = originalIcon;
-                        }, 2000);
-                    }).catch(function(err) {
-                        console.error('Failed to copy: ', err);
-                    });
-                });
-            }
-            
-            // Print button
-            const printBtn = document.getElementById('print-btn');
-            if (!printBtn) {
-                console.error("Print button not found");
-            } else {
-                printBtn.addEventListener('click', function() {
-                    window.print();
-                });
-            }
-            
-            // API Details Toggle
-            const apiDetailsBtn = document.getElementById('toggle-api-details');
-            const detailsPanel = document.getElementById('api-details-panel');
-            
-            if (!apiDetailsBtn || !detailsPanel) {
-                console.error("API details elements not found:", {
-                    apiDetailsBtn: !!apiDetailsBtn,
-                    detailsPanel: !!detailsPanel
-                });
-            } else {
-                console.log("API details elements found, setting up toggle");
-                
-                // Force setting the display style to 'none' on initialization
-                detailsPanel.style.display = 'none';
-                
-                apiDetailsBtn.addEventListener('click', function() {
-                    console.log("API details button clicked, current display:", detailsPanel.style.display);
-                    // Changed comparison to include both cases: either style.display is 'none' or is empty/undefined
-                    if (detailsPanel.style.display === 'none' || !detailsPanel.style.display) {
-                        detailsPanel.style.display = 'block';
-                        apiDetailsBtn.innerHTML = '<i class="fas fa-times-circle"></i>';
-                        apiDetailsBtn.title = 'Hide API details';
-                        
-                        // Initialize syntax highlighting
-                        document.querySelectorAll('pre code').forEach((block) => {
-                            try {
-                                hljs.highlightElement(block);
-                            } catch (e) {
-                                console.error("Error highlighting code:", e);
-                            }
-                        });
-                    } else {
-                        detailsPanel.style.display = 'none';
-                        apiDetailsBtn.innerHTML = '<i class="fas fa-code"></i>';
-                        apiDetailsBtn.title = 'Show API details';
-                    }
-                });
-            }
-            
-            // Export functionality - toggle dropdown
-            const exportBtn = document.getElementById('export-dropdown-btn');
-            const exportMenu = document.getElementById('export-dropdown-menu');
-            
-            if (!exportBtn || !exportMenu) {
-                console.error("Export dropdown elements not found:", {
-                    exportBtn: !!exportBtn,
-                    exportMenu: !!exportMenu
-                });
-            } else {
-                console.log("Export dropdown elements found, setting up toggle");
-                
-                // Handle keyboard accessibility
-                exportBtn.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        exportMenu.classList.toggle('show');
-                    }
-                });
-                
-                // Allow clicking outside to close the dropdown
-                document.addEventListener('click', function(e) {
-                    if (!exportBtn.contains(e.target) && !exportMenu.contains(e.target)) {
-                        exportMenu.classList.remove('show');
-                    }
-                });
-                
-                // Add click handlers for export items
-                const exportItems = exportMenu.querySelectorAll('.dropdown-item');
-                exportItems.forEach(item => {
-                    item.addEventListener('click', function() {
-                        // Close the dropdown after clicking an item
-                        exportMenu.classList.remove('show');
-                    });
-                });
-            }
-            
-            // Custom refresh modal handling
-            const refreshBtn = document.getElementById('refresh-btn');
-            const refreshModal = document.getElementById('refresh-modal');
-            const modalConfirm = document.getElementById('modal-confirm');
-            const modalCancel = document.getElementById('modal-cancel');
-            const modalConfirmation = document.getElementById('modal-confirmation');
-            const modalLoading = document.getElementById('modal-loading');
-
-            if (refreshBtn && refreshModal) {
-                // Open the modal when refresh button is clicked
-                refreshBtn.addEventListener('click', function() {
-                    refreshModal.classList.add('show');
-                    modalConfirmation.style.display = 'block';
-                    modalLoading.style.display = 'none';
-                });
-
-                // Close the modal when cancel is clicked
-                if (modalCancel) {
-                    modalCancel.addEventListener('click', function() {
-                        refreshModal.classList.remove('show');
-                    });
-                }
-
-                // Handle confirmation
-                if (modalConfirm) {
-                    modalConfirm.addEventListener('click', function() {
-                        // Hide confirmation, show loading
-                        modalConfirmation.style.display = 'none';
-                        modalLoading.style.display = 'block';
-                        
-                        // Get the article URL and model more reliably
-                        let articleUrl = '';
-                        let model = '';
-                        
-                        // Get the URL from the meta item with the source label
-                        const sourceMetaItem = Array.from(document.querySelectorAll('.meta-item')).find(item => 
-                            item.querySelector('.meta-label').textContent.includes('Source'));
-                        
-                        if (sourceMetaItem && sourceMetaItem.querySelector('a')) {
-                            articleUrl = sourceMetaItem.querySelector('a').href;
-                            console.log('Found article URL:', articleUrl);
-                        } else {
-                            console.error('Could not find article URL element');
-                            alert('Error: Could not determine article URL. Please try again.');
-                            refreshModal.classList.remove('show');
-                            return;
-                        }
-                        
-                        // Get the model from the meta item with the model label
-                        const modelMetaItem = Array.from(document.querySelectorAll('.meta-item')).find(item => 
-                            item.querySelector('.meta-label').textContent.includes('Model'));
-                        
-                        if (modelMetaItem) {
-                            model = modelMetaItem.querySelector('.meta-value').textContent.trim();
-                            console.log('Found model:', model);
-                        } else {
-                            console.error('Could not find model element');
-                            alert('Error: Could not determine model. Please try again.');
-                            refreshModal.classList.remove('show');
-                            return;
-                        }
-                        
-                        // Log the request we're about to make
-                        const requestUrl = `/analysis/refresh?url=${encodeURIComponent(articleUrl)}&model=${encodeURIComponent(model)}`;
-                        console.log('Sending refresh request to:', requestUrl);
-                        
-                        // Prepare the HTMX request
-                        const refreshRequest = new XMLHttpRequest();
-                        refreshRequest.open('GET', requestUrl);
-                        
-                        // Add all the headers that HTMX would normally add
-                        refreshRequest.setRequestHeader('HX-Request', 'true');
-                        refreshRequest.setRequestHeader('HX-Trigger', 'refresh-btn');
-                        refreshRequest.setRequestHeader('HX-Target', '#analysis-report-wrapper');
-                        refreshRequest.setRequestHeader('HX-Current-URL', window.location.href);
-                        
-                        // Monitor the request state
-                        refreshRequest.onreadystatechange = function() {
-                            console.log('Request state changed:', refreshRequest.readyState);
-                        };
-                        
-                        refreshRequest.onload = function() {
-                            console.log('Request completed with status:', refreshRequest.status);
-                            if (refreshRequest.status >= 200 && refreshRequest.status < 300) {
-                                // Replace the content with the response
-                                const wrapper = document.getElementById('analysis-report-wrapper');
-                                wrapper.outerHTML = refreshRequest.responseText;
-                                
-                                // Process HTMX attributes on the new content
-                                if (typeof htmx !== 'undefined') {
-                                    console.log('Processing HTMX on new content');
-                                    htmx.process(document.body);
-                                }
-                                
-                                // Reset initialization flag to ensure event listeners are reattached
-                                window.analysisReportInitialized = false;
-                                
-                                // Call initialization after a brief delay to ensure DOM is updated
-                                setTimeout(function() {
-                                    console.log('Reinitializing report after refresh');
-                                    initializeAnalysisReport();
-                                }, 50);
-                                
-                                // Close the modal
-                                refreshModal.classList.remove('show');
-                            } else {
-                                console.error('Refresh request failed:', refreshRequest.status, refreshRequest.statusText);
-                                console.error('Response:', refreshRequest.responseText);
-                                alert('Failed to refresh the analysis. Please try again later.');
-                                refreshModal.classList.remove('show');
-                            }
-                        };
-                        
-                        refreshRequest.onerror = function() {
-                            console.error('Refresh request network error');
-                            alert('Failed to refresh the analysis. Please check your network connection and try again.');
-                            refreshModal.classList.remove('show');
-                        };
-                        
-                        refreshRequest.ontimeout = function() {
-                            console.error('Refresh request timed out');
-                            alert('The refresh request timed out. The server may be busy, please try again later.');
-                            refreshModal.classList.remove('show');
-                        };
-                        
-                        // Set a longer timeout for the request (60 seconds)
-                        refreshRequest.timeout = 60000;
-                        
-                        // Send the request
-                        refreshRequest.send();
-                    });
-                }
-            }
-            
-            console.log("Analysis report initialization completed");
-        } catch (error) {
-            console.error("Error initializing analysis report:", error);
+        } else {
+            // Inside string, just add the character
+            result += char;
         }
     }
+    
+    // Escape HTML and apply basic highlighting
+    return applySyntaxHighlighting(result);
+}
+
+// Function to copy JSON content to clipboard
+function copyJsonContent() {
+    log("Copying JSON to clipboard");
+    const jsonContainer = document.querySelector('#json-content');
+    
+    if (!jsonContainer) {
+        log("ERROR: JSON container not found for copying");
+        showToast("Error", "Could not find JSON content to copy", "danger");
+        return;
+    }
+    
+    const textToCopy = jsonContainer.textContent;
+    log(`Copying ${textToCopy.length} characters`);
+    
+    // Use the fallback approach first since it's more reliable
+    try {
+        log("Using fallback clipboard approach");
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        textArea.style.position = 'fixed';  // Ensure it's always visible
+        textArea.style.opacity = '0';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            log("Copy successful using execCommand");
+            showToast("Success", "JSON copied to clipboard", "success");
+            return;
+        } else {
+            log("execCommand copy failed, trying clipboard API");
+        }
+    } catch (err) {
+        log(`Fallback copy error: ${err.message}`);
+    }
+    
+    // Try the modern clipboard API as a backup
+    if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        log("Using Clipboard API");
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                log("Clipboard API copy successful");
+                showToast("Success", "JSON copied to clipboard", "success");
+            })
+            .catch(err => {
+                log(`Clipboard API error: ${err.message}`);
+                showToast("Error", "Failed to copy. Try again or use the Download button.", "danger");
+            });
+    } else {
+        log("Clipboard API not available");
+        showToast("Warning", "Copy completed but may not work in this browser. Try the Download button instead.", "warning");
+    }
+}
+
+// Function to copy raw JSON directly (triggered by button onclick)
+function copyRawJson() {
+    copyJsonContent();
+}
+
+// Toast notification function
+function showToast(title, message, type) {
+    log(`Showing toast: ${title} - ${message}`);
+    
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-${type} text-white">
+                <strong class="me-auto">${title}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    
+    // Make sure Bootstrap is loaded before trying to initialize the toast
+    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 3000
+        });
+        toast.show();
+    } else {
+        // Fallback if Bootstrap JS is not loaded
+        toastElement.style.display = 'block';
+        setTimeout(() => {
+            toastElement.remove();
+        }, 3000);
+    }
+    
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+
+// Trigger a formatting on load to ensure it happens
+setTimeout(formatRawJson, 50);
 </script>
-
-<style>
-    /* Add a prominent cached banner */
-    .cached-banner {
-        background-color: rgba(246, 173, 85, 0.2);
-        color: #f6ad55;
-        text-align: center;
-        padding: 0.5rem;
-        border-radius: 8px 8px 0 0;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: -1px;
-        flex-wrap: wrap;
-    }
-    
-    /* Add a refreshed banner */
-    .refreshed-banner {
-        background-color: rgba(72, 187, 120, 0.2);
-        color: #48bb78;
-        text-align: center;
-        padding: 0.5rem;
-        border-radius: 8px 8px 0 0;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: -1px;
-        flex-wrap: wrap;
-    }
-    
-    .banner-note {
-        display: block;
-        width: 100%;
-        font-size: 0.8rem;
-        font-weight: 400;
-        opacity: 0.9;
-        margin-top: 0.2rem;
-    }
-    
-    /* Visual feedback for copy button */
-    .btn-icon.copied {
-        background-color: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-        border-color: rgba(16, 185, 129, 0.4);
-    }
-    
-    /* Cached result styling */
-    .cached-result {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #f6ad55;
-    }
-    
-    /* The rest of the styles remain the same */
-    .card.analysis-result {
-        background-color: #1e2b3c;
-        color: #f0f2f5;
-        border: none;
-        border-radius: 8px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-        margin-bottom: 2rem;
-    }
-    
-    .card-header {
-        background-color: #2a3b50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px 8px 0 0;
-    }
-    
-    .card-title {
-        margin: 0;
-        color: #ffffff;
-        font-size: 1.5rem;
-        font-weight: 600;
-    }
-    
-    .card-title i {
-        margin-right: 0.5rem;
-        color: #4ea5ff;
-    }
-    
-    .card-body {
-        padding: 1.5rem;
-    }
-    
-    .result-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .result-meta {
-        flex: 1;
-    }
-    
-    .meta-item {
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-    }
-    
-    .meta-label {
-        font-weight: 600;
-        margin-right: 0.5rem;
-        color: #8c9db5;
-        min-width: 60px;
-    }
-    
-    .meta-value {
-        color: #e0e6ed;
-    }
-    
-    .meta-value a {
-        color: #4ea5ff;
-        text-decoration: none;
-    }
-    
-    .meta-value a:hover {
-        text-decoration: underline;
-    }
-    
-    .result-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-    
-    .btn-icon {
-        background: none;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #8c9db5;
-        width: 36px;
-        height: 36px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .btn-icon:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-    }
-    
-    .disclaimer-alert {
-        background-color: rgba(255, 193, 7, 0.1);
-        border-left: 4px solid #ffc107;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1.5rem;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-    }
-    
-    .disclaimer-alert i {
-        color: #ffc107;
-        margin-right: 0.75rem;
-        font-size: 1.25rem;
-    }
-    
-    .tabs {
-        display: flex;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        margin-bottom: 1.5rem;
-    }
-    
-    .tab-button {
-        background: none;
-        border: none;
-        color: #8c9db5;
-        padding: 0.75rem 1.25rem;
-        cursor: pointer;
-        font-weight: 500;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s;
-    }
-    
-    .tab-button:hover {
-        color: #e0e6ed;
-    }
-    
-    .tab-button.active {
-        color: #4ea5ff;
-        border-bottom-color: #4ea5ff;
-    }
-    
-    .tab-content {
-        display: none;
-    }
-    
-    .tab-content.active {
-        display: block;
-        animation: fadeIn 0.3s ease-in;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    .analysis-section {
-        margin-bottom: 1.5rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .analysis-section:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-    
-    .analysis-section h3 {
-        color: #4ea5ff;
-        margin-bottom: 1rem;
-        font-size: 1.25rem;
-        font-weight: 600;
-    }
-    
-    .source-evaluation {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 1.25rem;
-        border-radius: 8px;
-    }
-    
-    .source-eval-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.25rem;
-    }
-    
-    .evaluation-item {
-        background: rgba(0, 0, 0, 0.15);
-        padding: 1rem;
-        border-radius: 6px;
-    }
-    
-    .source-type {
-        grid-column: 1 / -1;
-    }
-    
-    .eval-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0.75rem;
-    }
-    
-    .eval-label {
-        font-weight: 600;
-        color: #8c9db5;
-        margin-right: auto;
-    }
-    
-    .eval-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 50px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-    
-    .eval-badge.high {
-        background-color: rgba(40, 167, 69, 0.2);
-        color: #28a745;
-    }
-    
-    .eval-badge.medium {
-        background-color: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-    }
-    
-    .eval-badge.low {
-        background-color: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-    }
-    
-    .source-type-value {
-        padding: 0.5rem;
-        background: rgba(78, 165, 255, 0.1);
-        color: #e0e6ed;
-        border-radius: 4px;
-        text-align: center;
-        font-weight: 500;
-    }
-    
-    .eval-justification {
-        margin: 0;
-        color: #e0e6ed;
-        line-height: 1.5;
-    }
-    
-    .mitre-techniques {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 0.5rem;
-    }
-    
-    .technique-item {
-        background: rgba(78, 165, 255, 0.1);
-        padding: 0.75rem 1rem;
-        border-radius: 4px;
-        display: flex;
-        align-items: flex-start;
-        width: 100%;
-        border: 1px solid rgba(78, 165, 255, 0.2);
-    }
-    
-    .technique-id {
-        background: #4ea5ff;
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 3px;
-        font-size: 0.75rem;
-        margin-right: 0.75rem;
-        font-family: monospace;
-        white-space: nowrap;
-    }
-    
-    .technique-content {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        flex: 1;
-    }
-    
-    .technique-name {
-        color: #e0e6ed;
-        font-weight: 500;
-    }
-    
-    .technique-description {
-        color: #a0aec0;
-        font-size: 0.875rem;
-        margin: 0.25rem 0 0 0;
-        line-height: 1.4;
-    }
-    
-    .insights-list {
-        padding-left: 1.5rem;
-        margin: 0.5rem 0;
-        color: #e0e6ed;
-    }
-    
-    .insights-list li {
-        margin-bottom: 0.75rem;
-        line-height: 1.6;
-        position: relative;
-        padding-left: 0.5rem;
-    }
-    
-    .insights-list li:last-child {
-        margin-bottom: 0;
-    }
-    
-    .insights-list li::marker {
-        color: #4ea5ff;
-    }
-    
-    .relevance-score {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 1.25rem;
-        border-radius: 8px;
-    }
-    
-    .score-display {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    
-    .score-label {
-        font-weight: 600;
-        color: #8c9db5;
-        margin-right: 0.75rem;
-    }
-    
-    .score-value {
-        padding: 0.25rem 0.75rem;
-        border-radius: 50px;
-        font-size: 0.875rem;
-        font-weight: 600;
-    }
-    
-    .score-value.score-1 {
-        background-color: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-    }
-    
-    .score-value.score-2 {
-        background-color: rgba(253, 126, 20, 0.2);
-        color: #fd7e14;
-    }
-    
-    .score-value.score-3 {
-        background-color: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-    }
-    
-    .score-value.score-4 {
-        background-color: rgba(23, 162, 184, 0.2);
-        color: #17a2b8;
-    }
-    
-    .score-value.score-5 {
-        background-color: rgba(40, 167, 69, 0.2);
-        color: #28a745;
-    }
-    
-    .score-justification {
-        margin: 0;
-        color: #e0e6ed;
-        line-height: 1.6;
-    }
-    
-    /* Indicators of Compromise Styles */
-    .indicators-summary {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    
-    .indicator-count {
-        font-size: 0.9rem;
-        color: #8c9db5;
-        background-color: rgba(78, 165, 255, 0.1);
-        padding: 0.25rem 0.75rem;
-        border-radius: 50px;
-    }
-    
-    .indicators-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    
-    .indicator-category {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 8px;
-        padding: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .category-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #4ea5ff;
-        margin: 0 0 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .indicator-types {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-    
-    .indicator-type {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 6px;
-        padding: 0.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .indicator-type-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.75rem;
-    }
-    
-    .indicator-type-name {
-        font-weight: 600;
-        color: #e0e6ed;
-    }
-    
-    .indicator-type-count {
-        background-color: rgba(78, 165, 255, 0.2);
-        color: #4ea5ff;
-        padding: 0.1rem 0.5rem;
-        border-radius: 50px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-    
-    .indicator-values {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        max-height: 200px;
-        overflow-y: auto;
-        padding-right: 0.5rem;
-    }
-    
-    .indicator-value {
-        font-family: 'Courier New', monospace;
-        font-size: 0.85rem;
-        color: #a0aec0;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 0.25rem 0.5rem;
-        border-radius: 3px;
-        word-break: break-all;
-    }
-    
-    /* Critical Infrastructure Sectors Grid Styles */
-    .sectors-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-    
-    .sector-item {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 6px;
-        padding: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .sector-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-    
-    .sector-name {
-        font-weight: 600;
-        color: #e0e6ed;
-    }
-    
-    .sector-score {
-        padding: 0.25rem 0.75rem;
-        border-radius: 50px;
-        font-size: 0.875rem;
-        font-weight: 600;
-    }
-    
-    .sector-justification {
-        margin: 0.5rem 0 0 0;
-        color: #a0aec0;
-        font-size: 0.9rem;
-        line-height: 1.5;
-    }
-    
-    .raw-content {
-        white-space: pre-wrap;
-        font-family: "Monaco", "Menlo", "Consolas", monospace;
-        font-size: 0.9rem;
-        line-height: 1.6;
-        background: rgba(0, 0, 0, 0.2);
-        padding: 1.25rem;
-        border-radius: 8px;
-        color: #e0e6ed;
-        max-height: 600px;
-        overflow-y: auto;
-    }
-    
-    /* API Details Styles */
-    .api-details-container {
-        margin: 15px 0;
-        background-color: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        overflow: hidden;
-    }
-    
-    .api-details-header {
-        background-color: var(--bg-tertiary);
-        padding: 10px 15px;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .api-details-header h3 {
-        margin: 0;
-        font-size: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--text-primary);
-    }
-    
-    .api-details-subtitle {
-        font-size: 12px;
-        color: var(--text-secondary);
-        display: block;
-        margin-top: 3px;
-    }
-    
-    .api-details-content {
-        padding: 15px;
-    }
-    
-    .api-section {
-        margin-bottom: 20px;
-    }
-    
-    .api-section h4 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 14px;
-        color: var(--text-primary);
-    }
-    
-    .api-code {
-        background-color: rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
-        padding: 10px;
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-    }
-    
-    .api-code pre {
-        margin: 0;
-        white-space: pre-wrap;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
-    
-    .api-metrics {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-    
-    .api-metric {
-        background-color: var(--bg-tertiary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 8px 12px;
-    }
-    
-    .metric-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        display: block;
-    }
-    
-    .metric-value {
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-    
-    .api-completion h5 {
-        margin-top: 0;
-        margin-bottom: 8px;
-        font-size: 13px;
-        color: var(--text-primary);
-    }
-    
-    .api-code-preview {
-        background-color: var(--bg-tertiary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 10px;
-        max-height: 400px;
-        overflow-y: auto;
-        font-size: 12px;
-        white-space: pre-wrap;
-        font-family: 'Courier New', monospace;
-        color: var(--text-secondary);
-    }
-    
-    /* API Documentation */
-    .hljs {
-        background: transparent !important;
-    }
-    
-    /* HTMX Indicators */
-    .htmx-indicator {
-        display: none;
-    }
-    
-    .htmx-request .htmx-indicator {
-        display: inline-block;
-    }
-    
-    .htmx-request.btn-icon .fas:not(.fa-spinner) {
-        display: none;
-    }
-    
-    #refresh-indicator {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-    
-    /* Make refresh button more prominent */
-    .refresh-btn {
-        background-color: rgba(72, 187, 120, 0.15);
-        border-color: rgba(72, 187, 120, 0.4);
-        color: #48bb78;
-        font-weight: 500;
-        position: relative;
-    }
-    
-    .refresh-btn:hover {
-        background-color: rgba(72, 187, 120, 0.25);
-        color: #48bb78;
-    }
-    
-    /* Disabled button styling */
-    button[disabled], button.htmx-request {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-
-    /* Custom modal styles */
-    .custom-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .custom-modal.show {
-        display: flex;
-    }
-
-    .modal-content {
-        background-color: #1e2b3c;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        width: 90%;
-        max-width: 500px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .modal-section {
-        padding: 1.5rem;
-    }
-
-    .modal-section h3 {
-        margin-top: 0;
-        color: #4ea5ff;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 1.25rem;
-    }
-
-    .modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-    }
-
-    .modal-btn {
-        padding: 0.5rem 1.25rem;
-        border-radius: 4px;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        transition: all 0.2s;
-    }
-
-    .cancel-btn {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #8c9db5;
-    }
-
-    .cancel-btn:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .confirm-btn {
-        background-color: #4ea5ff;
-        color: white;
-    }
-
-    .confirm-btn:hover {
-        background-color: #3b94ee;
-    }
-
-    .loading-animation {
-        font-size: 2.5rem;
-        color: #4ea5ff;
-        text-align: center;
-        margin: 1.5rem 0;
-    }
-
-    .processing-note {
-        font-size: 0.875rem;
-        color: #8c9db5;
-        margin-top: 0.5rem;
-        text-align: center;
-    }
-
-    /* Loading animation section */
-    #modal-loading {
-        text-align: center;
-    }
-
-    #modal-loading p {
-        margin: 0.75rem 0;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    .custom-modal.show {
-        animation: fadeIn 0.3s ease-in;
-    }
-</style> 

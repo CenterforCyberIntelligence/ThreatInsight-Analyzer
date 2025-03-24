@@ -1,49 +1,81 @@
-<div class="card error-card" id="error-container">
-    <div class="card-header">
-        <h2 class="card-title"><i class="fas fa-exclamation-circle"></i> Error</h2>
-        <button class="close-btn" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <div class="card-body">
-        <div class="error-message">
-            <i class="fas fa-exclamation-triangle"></i>
-            <div class="message-content">
-                <h3>Analysis Error</h3>
-                <p>{{ error }}</p>
+<!-- Bootstrap Error Modal -->
+<div class="modal fade" id="error-modal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    {{ error_title|default('Analysis Failed') }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        </div>
-        
-        {% if details %}
-        <div class="error-details-container">
-            <button class="show-details-btn" onclick="toggleErrorDetails()">
-                <i class="fas fa-code"></i> Show technical details
-            </button>
-            <div class="error-details" id="error-details" style="display: none;">
-                <pre>{{ details }}</pre>
+            <div class="modal-body">
+                <div class="error-message mb-3">
+                    <div class="d-flex">
+                        <i class="bi bi-exclamation-circle text-danger me-3 fs-4"></i>
+                        <div>
+                            <p>{{ error }}</p>
+                            
+                            {% if error_type == 'openai_api' %}
+                            <div class="error-suggestions">
+                                <p><strong>Suggestions:</strong></p>
+                                <ul>
+                                    <li>Try using a different OpenAI model</li>
+                                    <li>Check if your API key has sufficient quota</li>
+                                    <li>The OpenAI service might be experiencing high traffic</li>
+                                </ul>
+                            </div>
+                            {% elif error_type == 'extraction' %}
+                            <div class="error-suggestions">
+                                <p><strong>Suggestions:</strong></p>
+                                <ul>
+                                    <li>Verify the URL is correct and accessible</li>
+                                    <li>The website might be blocking automated content extraction</li>
+                                    <li>Try a different article from the same source</li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if details %}
+                <div class="mt-3 mb-3">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#error-details" aria-expanded="false" aria-controls="error-details">
+                        <i class="bi bi-code me-1"></i> Technical details
+                    </button>
+                    <div class="collapse mt-2" id="error-details">
+                        <div class="card card-body">
+                            <pre class="mb-0">{{ details }}</pre>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-check me-1"></i> Okay
+                    </button>
+                    
+                    {% if url and model %}
+                    <button type="button" class="btn btn-primary" 
+                            hx-post="/analyze" 
+                            hx-vals='{"url": "{{ url }}", "model": "{{ model }}"}'
+                            hx-target="#analysis-result-container"
+                            hx-indicator="#loading-indicator">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Retry Analysis
+                    </button>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        {% endif %}
-        
-        <div class="error-actions">
-            <button class="btn btn-primary" hx-get="/" hx-target="#error-container" hx-swap="outerHTML">
-                <i class="fas fa-arrow-left"></i> Back to Form
-            </button>
         </div>
     </div>
 </div>
 
 <script>
-    function toggleErrorDetails() {
-        const details = document.getElementById('error-details');
-        const button = document.querySelector('.show-details-btn');
-        
-        if (details.style.display === 'none') {
-            details.style.display = 'block';
-            button.innerHTML = '<i class="fas fa-code"></i> Hide technical details';
-        } else {
-            details.style.display = 'none';
-            button.innerHTML = '<i class="fas fa-code"></i> Show technical details';
-        }
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show the modal
+        const errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
+        errorModal.show();
+    });
 </script> 

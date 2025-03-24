@@ -33,16 +33,16 @@ def analyze_article(
     temperature: float = 0.1,  # Lower default temperature for more consistent results
     seed: int = 42,  # Consistent seed for reproducibility
     extract_iocs: bool = True  # Whether to extract indicators of compromise
-) -> Union[str, Dict[str, Any], None]:
+) -> Union[Dict[str, Any], None]:
     """
-    Analyze an article using the specified AI model.
+    Analyze an article using the specified AI model with structured JSON responses.
     
     Args:
         content: The article text to analyze
         url: The source URL of the article
         model: The AI model to use for analysis
         verbose: Whether to print status messages
-        structured: Whether to return structured data
+        structured: Whether to return structured data (kept for compatibility)
         max_retries: Maximum number of retry attempts for API errors
         retry_delay: Delay between retry attempts in seconds
         temperature: Temperature setting for response variability (0.0 to 1.0)
@@ -50,35 +50,25 @@ def analyze_article(
         extract_iocs: Whether to extract indicators of compromise
     
     Returns:
-        Either a string containing the analysis, a dictionary with structured data, or None if analysis failed
+        A dictionary with structured analysis data or None if analysis failed
     """
-    content_length = len(content)
-    info(f"Starting analysis of article from {url} with model {model}")
-    debug(f"Article content length: {content_length} characters")
+    if not content:
+        error("No content provided for analysis")
+        return None
     
-    if verbose:
-        print_status(f"Starting analysis of article from {url}")
-        print_status(f"Content length: {content_length} characters")
-        print_status(f"Requested model: {model}")
+    if not url:
+        error("No URL provided for analysis")
+        return None
     
-    # Extract indicators of compromise if requested
+    if not model:
+        error("No model specified for analysis")
+        return None
+
+    # Extract indicators if requested
     extracted_indicators = None
     if extract_iocs:
-        debug("Extracting indicators of compromise from article content")
-        if verbose:
-            print_status("Extracting indicators of compromise from article content")
-            
-        # Extract indicators
-        extracted_indicators = extract_indicators(content, url)
-        
-        # Clean and validate the indicators
-        extracted_indicators = validate_and_clean_indicators(extracted_indicators)
-        
-        total_indicators = sum(len(indicators) for indicators in extracted_indicators.values())
-        debug(f"Extracted {total_indicators} indicators of compromise")
-        
-        if verbose:
-            print_status(f"Extracted {total_indicators} indicators of compromise")
+        info(f"Extracting indicators of compromise from content for {url}")
+        extracted_indicators = extract_indicators(content)
     
     try:
         # Override temperature from environment if available
@@ -90,53 +80,16 @@ def analyze_article(
             except ValueError:
                 warning(f"Invalid OPENAI_TEMPERATURE value: {env_temperature}, using default: {temperature}")
                 
-        # Prepare the system prompt with enhanced instructions for better analysis
-        system_prompt = """Analyze the cybersecurity article and create a structured threat intelligence report with the following sections:
+        # Prepare the system prompt
+        system_prompt = """You are an expert threat intelligence analyst. Analyze the cybersecurity article and create a structured threat intelligence report.
 
-1. Summary of Article
-A concise summary of the main points in a single paragraph.
+Your analysis must be thorough, technically accurate, and focus on extracting actionable threat intelligence.
 
-2. Source Evaluation
-- Reliability: High/Medium/Low with brief justification
-- Credibility: High/Medium/Low with brief justification
-- Source Type: Specify the type (Blog, Cybersecurity Vendor, Government Agency, etc.)
-
-3. MITRE ATT&CK Techniques
-List with technique IDs (when available), names, and brief descriptions.
-
-4. Key Threat Intelligence Insights
-Three main findings, each as a complete sentence.
-
-5. Potential Bias or Issues
-Two potential biases or issues with the source or analysis, as complete sentences.
-
-6. Relevance to U.S. Government (Score: 1-5)
-Justification for the relevance score.
-
-7. Critical Infrastructure Sectors Assessment
-Rate the relevance (1-5) to each applicable sector:
-- National Security
-- Chemical
-- Commercial Facilities
-- Communications
-- Critical Manufacturing
-- Dams
-- Defense Industrial Base
-- Emergency Services
-- Energy
-- Financial Services
-- Food & Agriculture
-- Government Services & Facilities
-- Healthcare & Public Health
-- Information Technology
-- Nuclear Reactors, Materials, and Waste
-- Transportation Systems
-- Water & Wastewater Systems
-
-Format all lists with numerical markers only (1., 2., 3.). Maintain consistent formatting.
-Be specific and factual in your analysis, focusing on evidence from the text.
-DO NOT use markdown formatting (such as **, *, or ##) in your response.
-"""
+Ensure you provide detailed assessment of:
+1. Source reliability and credibility
+2. Threat actors with proper attribution confidence
+3. MITRE ATT&CK techniques with proper IDs and descriptions
+4. Critical infrastructure sector impact scoring"""
 
         # Get token limits based on model
         if 'gpt-4' in model:
@@ -187,31 +140,221 @@ DO NOT use markdown formatting (such as **, *, or ##) in your response.
             
             content = truncated_content
         
+        # Define the JSON schema for the threat intelligence report
+        json_schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "A concise summary of the main points in a single paragraph."
+                },
+                "source_evaluation": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "reliability": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "level": {
+                                    "type": "string",
+                                    "enum": ["High", "Medium", "Low"],
+                                    "description": "The reliability level of the source"
+                                },
+                                "justification": {
+                                    "type": "string",
+                                    "description": "Brief justification for the reliability assessment"
+                                }
+                            },
+                            "required": ["level", "justification"]
+                        },
+                        "credibility": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "level": {
+                                    "type": "string",
+                                    "enum": ["High", "Medium", "Low"],
+                                    "description": "The credibility level of the source"
+                                },
+                                "justification": {
+                                    "type": "string",
+                                    "description": "Brief justification for the credibility assessment"
+                                }
+                            },
+                            "required": ["level", "justification"]
+                        },
+                        "source_type": {
+                            "type": "string",
+                            "description": "The type of source (e.g., Blog, Cybersecurity Vendor, Government Agency, etc.)"
+                        }
+                    },
+                    "required": ["reliability", "credibility", "source_type"]
+                },
+                "threat_actors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The name of the threat actor or group"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Brief description of the actor's role in the article"
+                            },
+                            "confidence": {
+                                "type": "string",
+                                "enum": ["High", "Medium", "Low"],
+                                "description": "Confidence level in the attribution"
+                            },
+                            "aliases": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Alternative names for the threat actor"
+                            }
+                        },
+                        "required": ["name", "description", "confidence", "aliases"]
+                    },
+                    "description": "List of threat actors mentioned in the article"
+                },
+                "mitre_techniques": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "The MITRE ATT&CK technique ID (e.g., T1234)"
+                            },
+                            "name": {
+                                "type": "string",
+                                "description": "The name of the technique"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Brief description of how this technique appears in the article"
+                            }
+                        },
+                        "required": ["id", "name", "description"]
+                    },
+                    "description": "MITRE ATT&CK techniques mentioned in the article"
+                },
+                "key_insights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Key threat intelligence insights from the article"
+                },
+                "potential_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Potential biases or issues with the source or analysis"
+                },
+                "intelligence_gaps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Missing intelligence elements or unanswered questions"
+                },
+                "critical_sectors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name of the critical infrastructure sector"
+                            },
+                            "score": {
+                                "type": "integer",
+                                "description": "Relevance score (1-5, where 1=Minimal, 5=Critical)"
+                            },
+                            "justification": {
+                                "type": "string",
+                                "description": "Justification for the relevance score"
+                            }
+                        },
+                        "required": ["name", "score", "justification"]
+                    },
+                    "description": "Critical infrastructure sectors relevant to the threat"
+                }
+            },
+            "required": ["summary", "source_evaluation", "mitre_techniques", "key_insights", 
+                         "potential_issues", "intelligence_gaps", "critical_sectors", "threat_actors"]
+        }
+        
+        # Prepare the sectors list instructions
+        sectors_instruction = """
+Only include sectors that are relevant with a score of 2 or higher. Rate each sector's relevance on a scale of 1-5, where:
+1: Minimal/No Relevance
+2: Low Relevance
+3: Moderate Relevance
+4: High Relevance
+5: Critical Relevance
+
+The sectors to consider are:
+- National Security
+- Chemical Sector
+- Commercial Facilities Sector
+- Communications Sector
+- Critical Manufacturing Sector
+- Dams Sector
+- Defense Industrial Base Sector
+- Emergency Services Sector
+- Energy Sector
+- Financial Services Sector
+- Food & Agriculture Sector
+- Government Services & Facilities Sector
+- Healthcare & Public Health Sector
+- Information Technology Sector
+- Nuclear Reactors, Materials, and Waste Sector
+- Transportation Systems Sector
+- Water & Wastewater Systems Sector
+
+Be specific and factual in your analysis, focusing on evidence from the text.
+"""
+
+        # Prepare the user content
+        user_content = f"Article URL: {url}\n\nContent:\n{content}\n\n{sectors_instruction}"
+
         # Prepare the API request details for logging
         api_request = {
             "model": model,
-            "messages": [
+            "input": [
                 {"role": "system", "content": system_prompt},
                 # For logging only: Show first 100 chars of content with "..." indicator for truncation
                 {"role": "user", "content": f"Article URL: {url}\n\nContent: [Full article text - {len(content)} chars]"}
             ],
             "temperature": temperature,
-            "max_tokens": max_output_tokens,
-            "seed": seed
+            "max_output_tokens": max_output_tokens
         }
 
         # Log the API request
         debug(f"Preparing OpenAI API request with model: {model}")
-        debug(f"API Request Parameters: temperature={api_request['temperature']}, max_tokens={api_request['max_tokens']}, seed={api_request['seed']}")
+        debug(f"API Request Parameters: temperature={api_request['temperature']}, max_output_tokens={api_request['max_output_tokens']}")
         debug(f"Content length being sent to API: {len(content)} characters")
+        debug(f"Using structured JSON response format with schema validation")
 
         # Log the exact model being used
         if verbose:
             print_status(f"API REQUEST: Using model '{model}' for analysis")
             print_status(f"Creating OpenAI API request with model: {model}")
             print_status(f"Maximum output tokens: {max_output_tokens}")
-            print_status(f"Temperature: {temperature}, Seed: {seed}")
+            print_status(f"Temperature: {temperature}")
             print_status(f"Sending full article content ({len(content)} characters)")
+            print_status(f"Requesting structured JSON response with schema validation")
 
         # Make API call with retries
         response = None
@@ -222,16 +365,22 @@ DO NOT use markdown formatting (such as **, *, or ##) in your response.
             try:
                 info(f"Sending request to OpenAI API with model: {model} (attempt {retry_count + 1})")
                 
-                response = client.chat.completions.create(
+                response = client.responses.create(
                     model=model,
-                    messages=[
+                    input=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Article URL: {url}\n\nContent:\n{content}"}
+                        {"role": "user", "content": user_content}
                     ],
                     temperature=temperature,
-                    max_tokens=max_output_tokens,
-                    seed=seed,
-                    response_format={"type": "text"}  # Ensure text response for consistency
+                    max_output_tokens=max_output_tokens,
+                    text={
+                        "format": {
+                            "type": "json_schema",
+                            "name": "threat_intelligence_report",
+                            "schema": json_schema,
+                            "strict": True
+                        }
+                    }
                 )
                 # If we get here, the request succeeded
                 break
@@ -269,14 +418,114 @@ DO NOT use markdown formatting (such as **, *, or ##) in your response.
                 print_status(f"All API requests failed: {str(last_error)}", is_error=True)
             return None
 
+        # Check for refusals or incomplete responses
+        if response.status == "incomplete":
+            if response.incomplete_details and response.incomplete_details.reason == "content_filter":
+                error(f"Content filter triggered, response halted: {response.incomplete_details.reason}")
+                if verbose:
+                    print_status(f"Content filter triggered, response halted", is_error=True)
+                
+                # Return a minimal valid structure with an error message
+                return {
+                    "text": "Error: Content filter triggered. The analysis could not be completed.",
+                    "structured": {
+                        "summary": "Content filter triggered. The analysis could not be completed.",
+                        "source_evaluation": {
+                            "reliability": {"level": "Low", "justification": "Analysis incomplete due to content filter"},
+                            "credibility": {"level": "Low", "justification": "Analysis incomplete due to content filter"},
+                            "source_type": "Unknown"
+                        },
+                        "mitre_techniques": [],
+                        "key_insights": ["Error: Content filter triggered."],
+                        "potential_issues": ["Analysis could not be completed due to content filter."],
+                        "intelligence_gaps": ["Full analysis could not be extracted due to content filter."],
+                        "critical_sectors": [],
+                        "threat_actors": []
+                    },
+                    "api_details": {
+                        "error": "content_filter",
+                        "request": api_request
+                    },
+                    "extracted_indicators": extracted_indicators
+                }
+            
+            if response.incomplete_details and response.incomplete_details.reason == "max_output_tokens":
+                error(f"Response incomplete due to max token limit: {response.incomplete_details.reason}")
+                if verbose:
+                    print_status(f"Response incomplete due to max token limit", is_error=True)
+                
+                # Return a minimal valid structure with an error message
+                return {
+                    "text": "Error: Max token limit reached. The analysis could not be completed.",
+                    "structured": {
+                        "summary": "Error: Max token limit reached. The analysis could not be completed.",
+                        "source_evaluation": {
+                            "reliability": {"level": "Low", "justification": "Analysis incomplete due to token limit"},
+                            "credibility": {"level": "Low", "justification": "Analysis incomplete due to token limit"},
+                            "source_type": "Unknown"
+                        },
+                        "mitre_techniques": [],
+                        "key_insights": ["Error: Max token limit reached."],
+                        "potential_issues": ["Analysis could not be completed due to token limit."],
+                        "intelligence_gaps": ["Full analysis could not be extracted due to token limit."],
+                        "critical_sectors": [],
+                        "threat_actors": []
+                    },
+                    "api_details": {
+                        "error": "max_output_tokens",
+                        "request": api_request
+                    },
+                    "extracted_indicators": extracted_indicators
+                }
+        
+        # Check for refusals
+        if hasattr(response, 'output') and len(response.output) > 0:
+            output_content = response.output[0].content
+            if len(output_content) > 0 and output_content[0].type == "refusal":
+                refusal_message = output_content[0].refusal
+                error(f"Model refused to generate response: {refusal_message}")
+                if verbose:
+                    print_status(f"Model refused to generate response: {refusal_message}", is_error=True)
+                
+                # Return a minimal valid structure with an error message
+                return {
+                    "text": f"Error: Model refused to generate response. {refusal_message}",
+                    "structured": {
+                        "summary": f"Error: Model refused to generate response. {refusal_message}",
+                        "source_evaluation": {
+                            "reliability": {"level": "Low", "justification": "Analysis refused by model"},
+                            "credibility": {"level": "Low", "justification": "Analysis refused by model"},
+                            "source_type": "Unknown"
+                        },
+                        "mitre_techniques": [],
+                        "key_insights": [f"Error: Model refused to generate response."],
+                        "potential_issues": [f"Analysis could not be completed due to refusal: {refusal_message}"],
+                        "intelligence_gaps": ["Full analysis could not be extracted due to model refusal."],
+                        "critical_sectors": [],
+                        "threat_actors": []
+                    },
+                    "api_details": {
+                        "error": "refusal",
+                        "refusal_message": refusal_message,
+                        "request": api_request
+                    },
+                    "extracted_indicators": extracted_indicators
+                }
+
         # Log the model that was actually used in the response
-        actual_model = response.model
+        actual_model = response.model or model  # Fallback to requested model if not provided
         info(f"Received response from OpenAI API using model: {actual_model}")
-        debug(f"API usage: {response.usage.prompt_tokens} input tokens, {response.usage.completion_tokens} output tokens")
+        
+        # Extract usage information if available
+        prompt_tokens = getattr(response, 'prompt_tokens', 0) or 0
+        completion_tokens = getattr(response, 'completion_tokens', 0) or 0
+        total_tokens = prompt_tokens + completion_tokens
+        
+        debug(f"API usage: {prompt_tokens} input tokens, {completion_tokens} output tokens")
         
         if verbose:
             print_status(f"API RESPONSE: Received response from model: '{actual_model}'")
-            print_status(f"Input tokens: {response.usage.prompt_tokens}, Output tokens: {response.usage.completion_tokens}")
+            print_status(f"Input tokens: {prompt_tokens}, Output tokens: {completion_tokens}")
             
             # Check if requested model matches the actual model used (ignoring date suffixes)
             base_requested_model = model.split('-')[0] if '-' in model else model
@@ -291,15 +540,15 @@ DO NOT use markdown formatting (such as **, *, or ##) in your response.
         # Track token usage
         track_token_usage(
             model=actual_model,  # Use the actual model from the response
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens
+            input_tokens=prompt_tokens,
+            output_tokens=completion_tokens
         )
         
         # Update API request details for logging with accurate token counts
         api_request["tokens"] = {
-            "prompt": response.usage.prompt_tokens,
-            "completion": response.usage.completion_tokens,
-            "total": response.usage.prompt_tokens + response.usage.completion_tokens
+            "prompt": prompt_tokens,
+            "completion": completion_tokens,
+            "total": total_tokens
         }
         
         # Record if content was truncated from the original
@@ -310,50 +559,168 @@ DO NOT use markdown formatting (such as **, *, or ##) in your response.
                 "percentage_kept": round(len(content) / original_content_length * 100, 2)
             }
 
-        analysis_text = response.choices[0].message.content
+        # Get the raw JSON response content
+        analysis_text = response.output_text
         debug(f"Analysis text length: {len(analysis_text)} characters")
 
         # Create API response details
         api_response = {
             "model": actual_model,  # Use the actual model from the response
-            "input_tokens": response.usage.prompt_tokens,
-            "output_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.prompt_tokens + response.usage.completion_tokens,
+            "input_tokens": prompt_tokens,
+            "output_tokens": completion_tokens,
+            "total_tokens": total_tokens,
             "first_completion": analysis_text[:500] + "..." if len(analysis_text) > 500 else analysis_text
         }
 
-        if structured:
-            # Parse the response into structured data
-            info("Parsing analysis response into structured data")
-            structured_data = parse_analysis_response(analysis_text)
-            debug(f"Structured data: {json.dumps(structured_data, indent=2)[:500]}...")
+        # Parse the JSON response
+        info("Parsing structured JSON response")
+        try:
+            structured_data = json.loads(analysis_text)
+            debug(f"Parsed structured data successfully")
             
-            # Include the extracted indicators if available
-            if extracted_indicators:
-                formatted_indicators = format_indicators_for_display(extracted_indicators)
-                structured_data["indicators"] = formatted_indicators
-                debug(f"Added {formatted_indicators['total_count']} extracted indicators to structured data")
+        except json.JSONDecodeError as e:
+            error(f"Error parsing JSON response: {str(e)}")
+            warning("JSON parsing failed - check if the model response is proper JSON")
+            if verbose:
+                print_status(f"Error parsing JSON: {str(e)}", is_error=True)
+                print_status(f"First 200 chars of response: {analysis_text[:200]}")
             
-            return {
-                "text": analysis_text,
-                "structured": structured_data,
-                "api_details": {
-                    "request": api_request,
-                    "response": api_response
+            # Return a minimal valid structure
+            structured_data = {
+                "summary": "Error parsing response. The analysis could not be properly structured.",
+                "source_evaluation": {
+                    "reliability": {"level": "Low", "justification": "Error in parsing response"},
+                    "credibility": {"level": "Low", "justification": "Error in parsing response"},
+                    "source_type": "Unknown"
                 },
-                "extracted_indicators": extracted_indicators
+                "mitre_techniques": [],
+                "key_insights": ["Error in parsing response."],
+                "potential_issues": ["Error in structuring the analysis."],
+                "intelligence_gaps": ["Full analysis could not be extracted."],
+                "critical_sectors": [],
+                "threat_actors": []
             }
         
-        info("Returning raw analysis text (unstructured)")
-        return analysis_text
-
-    except Exception as e:
-        error(f"Error during analysis with model {model}: {str(e)}")
-        error(traceback.format_exc())
+        # Validate and ensure all required fields exist
+        self_validate_structured_data(structured_data)
         
+        # Include the extracted indicators if available
+        if extracted_indicators:
+            formatted_indicators = format_indicators_for_display(extracted_indicators)
+            structured_data["indicators"] = formatted_indicators
+            debug(f"Added {formatted_indicators['total_count']} extracted indicators to structured data")
+            
+        # Store indicators if available
+        if extracted_indicators and len(extracted_indicators) > 0:
+            try:
+                store_indicators(url, extracted_indicators)
+                debug(f"Stored {sum(len(indicators) for indicators in extracted_indicators.values())} indicators for URL: {url}")
+            except Exception as e:
+                warning(f"Failed to store indicators for URL: {url}. Error: {str(e)}")
+        
+        # Log the structured data before returning
+        debug("=================== ANALYSIS RESPONSE DATA ===================")
+        debug(f"Raw analysis text type: {type(analysis_text)}")
+        debug(f"Raw analysis text length: {len(analysis_text)}")
+        debug(f"Raw analysis first 100 chars: {analysis_text[:100]}")
+        debug(f"Is raw text valid JSON? {is_valid_json(analysis_text)}")
+        debug(f"Structured data keys: {list(structured_data.keys() if structured_data else [])}")
+        debug("=================== END ANALYSIS RESPONSE DATA ===================")
+        
+        result = {
+            "text": analysis_text,
+            "structured": structured_data,
+            "api_details": {
+                "request": api_request,
+                "response": api_response
+            },
+            "extracted_indicators": extracted_indicators
+        }
+        
+        debug(f"Final result contains keys: {list(result.keys())}")
+        return result
+        
+    except Exception as e:
+        error(f"Error in analyze_article: {str(e)}")
+        error(traceback.format_exc())
         if verbose:
-            print_status(f"Error during analysis with model {model}: {str(e)}", is_error=True)
+            print_status(f"Error in article analysis: {str(e)}", is_error=True)
         return None
+
+def self_validate_structured_data(data: Dict[str, Any]) -> None:
+    """
+    Ensure the structured data has all required fields.
+    Modifies the data dictionary in place to fix any missing fields.
+    
+    Args:
+        data: The structured data dictionary to validate
+    """
+    # Ensure top-level fields exist
+    if "summary" not in data or not data["summary"]:
+        data["summary"] = "No summary available."
+    
+    # Validate source_evaluation
+    if "source_evaluation" not in data or not data["source_evaluation"]:
+        data["source_evaluation"] = {
+            "reliability": {"level": "Medium", "justification": "No reliability assessment available."},
+            "credibility": {"level": "Medium", "justification": "No credibility assessment available."},
+            "source_type": "Unknown"
+        }
+    else:
+        source_eval = data["source_evaluation"]
+        if "reliability" not in source_eval or not source_eval["reliability"]:
+            source_eval["reliability"] = {"level": "Medium", "justification": "No reliability assessment available."}
+        else:
+            if "level" not in source_eval["reliability"] or not source_eval["reliability"]["level"]:
+                source_eval["reliability"]["level"] = "Medium"
+            if "justification" not in source_eval["reliability"] or not source_eval["reliability"]["justification"]:
+                source_eval["reliability"]["justification"] = "No justification provided."
+        
+        if "credibility" not in source_eval or not source_eval["credibility"]:
+            source_eval["credibility"] = {"level": "Medium", "justification": "No credibility assessment available."}
+        else:
+            if "level" not in source_eval["credibility"] or not source_eval["credibility"]["level"]:
+                source_eval["credibility"]["level"] = "Medium"
+            if "justification" not in source_eval["credibility"] or not source_eval["credibility"]["justification"]:
+                source_eval["credibility"]["justification"] = "No justification provided."
+        
+        if "source_type" not in source_eval or not source_eval["source_type"]:
+            source_eval["source_type"] = "Unknown"
+    
+    # Ensure arrays exist
+    for field in ["threat_actors", "mitre_techniques", "key_insights", "potential_issues", "intelligence_gaps", "critical_sectors"]:
+        if field not in data or not isinstance(data[field], list):
+            data[field] = []
+    
+    # Standard fixes for misformatted data
+    # For threat actors, ensure each has required fields
+    for actor in data["threat_actors"]:
+        if "name" not in actor or not actor["name"]:
+            actor["name"] = "Unknown Actor"
+        if "description" not in actor or not actor["description"]:
+            actor["description"] = "No description available."
+        if "confidence" not in actor or not actor["confidence"]:
+            actor["confidence"] = "Medium"
+        if "aliases" not in actor or not isinstance(actor["aliases"], list):
+            actor["aliases"] = []
+    
+    # For MITRE techniques, ensure each has required fields
+    for technique in data["mitre_techniques"]:
+        if "id" not in technique or not technique["id"]:
+            technique["id"] = "Unknown"
+        if "name" not in technique or not technique["name"]:
+            technique["name"] = "Unknown Technique"
+        if "description" not in technique or not technique["description"]:
+            technique["description"] = "No description available."
+    
+    # For critical sectors, ensure each has required fields
+    for sector in data["critical_sectors"]:
+        if "name" not in sector or not sector["name"]:
+            sector["name"] = "Unknown Sector"
+        if "score" not in sector or not isinstance(sector["score"], int):
+            sector["score"] = 1
+        if "justification" not in sector or not sector["justification"]:
+            sector["justification"] = "No justification available."
 
 def parse_analysis_response(text: str) -> Dict[str, Any]:
     """
@@ -729,4 +1096,12 @@ def parse_mitre_technique(text: str) -> Dict[str, str]:
     return {
         "id": "",
         "name": text.strip()
-    } 
+    }
+
+# Helper function to check if a string is valid JSON
+def is_valid_json(json_string):
+    try:
+        json.loads(json_string)
+        return True
+    except json.JSONDecodeError:
+        return False 

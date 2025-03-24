@@ -105,68 +105,133 @@ def export_analysis_as_csv(
             filename = get_export_filename(domain, "csv")
             file_path = os.path.join(tempfile.gettempdir(), filename)
         
+        # Extract structured data
+        structured = analysis_data.get("structured", {})
+        
         # Prepare rows for CSV
         rows = []
         
-        # Add header row
-        rows.append(["Category", "Value"])
+        # Basic metadata
+        rows.append(["URL", analysis_data.get("url", "Not provided")])
+        rows.append(["Analysis Date", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        rows.append(["Model Used", analysis_data.get("model", "Unknown")])
+        rows.append([])  # Empty row as separator
         
-        # Add summary
-        if "summary" in analysis_data and analysis_data["summary"]:
-            rows.append(["Summary", analysis_data["summary"]])
+        # Summary
+        rows.append(["SUMMARY", structured.get("summary", "")])
+        rows.append([])  # Empty row as separator
         
-        # Add source evaluation
-        if "source_evaluation" in analysis_data and analysis_data["source_evaluation"]:
-            source_eval = analysis_data["source_evaluation"]
+        # Source evaluation
+        source_eval = structured.get("source_evaluation", {})
+        rows.append(["SOURCE EVALUATION", ""])
+        rows.append(["Reliability", 
+                    f"{source_eval.get('reliability', {}).get('level', 'Unknown')} - " +
+                    f"{source_eval.get('reliability', {}).get('justification', '')}"])
+        rows.append(["Credibility", 
+                    f"{source_eval.get('credibility', {}).get('level', 'Unknown')} - " +
+                    f"{source_eval.get('credibility', {}).get('justification', '')}"])
+        rows.append(["Source Type", source_eval.get("source_type", "Unknown")])
+        rows.append([])  # Empty row as separator
+        
+        # Threat Actors
+        threat_actors = structured.get("threat_actors", [])
+        if threat_actors:
+            rows.append(["THREAT ACTORS", ""])
+            for idx, actor in enumerate(threat_actors, 1):
+                aliases = ", ".join(actor.get("aliases", [])) if "aliases" in actor and actor["aliases"] else "None"
+                rows.append([f"Actor {idx}", 
+                           f"Name: {actor.get('name', 'Unknown')}, " +
+                           f"Confidence: {actor.get('confidence', 'Unknown')}, " +
+                           f"Aliases: {aliases}, " +
+                           f"Description: {actor.get('description', '')}"])
+            rows.append([])  # Empty row as separator
+        
+        # MITRE ATT&CK techniques
+        mitre_techniques = structured.get("mitre_techniques", [])
+        if mitre_techniques:
+            rows.append(["MITRE ATT&CK TECHNIQUES", ""])
+            for idx, technique in enumerate(mitre_techniques, 1):
+                rows.append([f"Technique {idx}", 
+                           f"ID: {technique.get('id', 'Unknown')}, " +
+                           f"Name: {technique.get('name', 'Unknown')}, " +
+                           f"Description: {technique.get('description', '')}"])
+            rows.append([])  # Empty row as separator
+        
+        # Key insights
+        key_insights = structured.get("key_insights", [])
+        if key_insights:
+            rows.append(["KEY THREAT INTELLIGENCE INSIGHTS", ""])
+            for idx, insight in enumerate(key_insights, 1):
+                rows.append([f"Insight {idx}", insight])
+            rows.append([])  # Empty row as separator
+        
+        # Potential issues
+        potential_issues = structured.get("potential_issues", [])
+        if potential_issues:
+            rows.append(["POTENTIAL BIAS OR ISSUES", ""])
+            for idx, issue in enumerate(potential_issues, 1):
+                rows.append([f"Issue {idx}", issue])
+            rows.append([])  # Empty row as separator
             
-            if "reliability" in source_eval:
-                rows.append(["Reliability", source_eval["reliability"]])
+        # Intelligence Gaps
+        intelligence_gaps = structured.get("intelligence_gaps", [])
+        if intelligence_gaps:
+            rows.append(["INTELLIGENCE GAPS", ""])
+            for idx, gap in enumerate(intelligence_gaps, 1):
+                rows.append([f"Gap {idx}", gap])
+            rows.append([])  # Empty row as separator
+        
+        # Critical sectors
+        critical_sectors = structured.get("critical_sectors", [])
+        if critical_sectors:
+            rows.append(["CRITICAL INFRASTRUCTURE SECTORS", ""])
+            for sector in critical_sectors:
+                rows.append([sector.get("name", "Unknown"), 
+                           f"Score: {sector.get('score', 0)}/5, " +
+                           f"Justification: {sector.get('justification', '')}"])
+            rows.append([])  # Empty row as separator
+        
+        # Indicators (if available)
+        indicators = structured.get("indicators", {})
+        if indicators and indicators.get("total_count", 0) > 0:
+            rows.append(["INDICATORS OF COMPROMISE", f"Total Count: {indicators.get('total_count', 0)}"])
             
-            if "credibility" in source_eval:
-                rows.append(["Credibility", source_eval["credibility"]])
+            # Add IP addresses
+            ip_addresses = indicators.get("ip_addresses", [])
+            if ip_addresses:
+                rows.append(["IP Addresses", ""])
+                for ip in ip_addresses:
+                    rows.append(["", ip])
             
-            if "source_type" in source_eval:
-                rows.append(["Source Type", source_eval["source_type"]])
-        
-        # Add threat actors
-        if "threat_actors" in analysis_data and analysis_data["threat_actors"]:
-            for actor in analysis_data["threat_actors"]:
-                rows.append(["Threat Actor", actor])
-        
-        # Add MITRE techniques
-        if "mitre_techniques" in analysis_data and analysis_data["mitre_techniques"]:
-            techniques = analysis_data["mitre_techniques"]
+            # Add domains
+            domains = indicators.get("domains", [])
+            if domains:
+                rows.append(["Domains", ""])
+                for domain_item in domains:
+                    rows.append(["", domain_item])
             
-            for technique in techniques:
-                if isinstance(technique, dict) and "id" in technique and "name" in technique:
-                    technique_display = f"{technique['id']}: {technique['name']}"
-                    if "url" in technique:
-                        technique_display += f" ({technique['url']})"
-                    rows.append(["MITRE Technique", technique_display])
-                elif isinstance(technique, str):
-                    rows.append(["MITRE Technique", technique])
+            # Add URLs
+            urls = indicators.get("urls", [])
+            if urls:
+                rows.append(["URLs", ""])
+                for url_item in urls:
+                    rows.append(["", url_item])
+            
+            # Add file hashes
+            file_hashes = indicators.get("file_hashes", [])
+            if file_hashes:
+                rows.append(["File Hashes", ""])
+                for hash_item in file_hashes:
+                    rows.append(["", hash_item])
+            
+            # Add email addresses
+            email_addresses = indicators.get("email_addresses", [])
+            if email_addresses:
+                rows.append(["Email Addresses", ""])
+                for email in email_addresses:
+                    rows.append(["", email])
         
-        # Add key insights
-        if "key_insights" in analysis_data and analysis_data["key_insights"]:
-            for insight in analysis_data["key_insights"]:
-                rows.append(["Key Insight", insight])
-        
-        # Add source bias
-        if "source_bias" in analysis_data and analysis_data["source_bias"]:
-            rows.append(["Source Bias", analysis_data["source_bias"]])
-        
-        # Add intelligence gaps
-        if "intelligence_gaps" in analysis_data and analysis_data["intelligence_gaps"]:
-            for gap in analysis_data["intelligence_gaps"]:
-                rows.append(["Intelligence Gap", gap])
-        
-        # Add critical infrastructure sectors
-        if "critical_infrastructure_sectors" in analysis_data and analysis_data["critical_infrastructure_sectors"]:
-            sectors = analysis_data["critical_infrastructure_sectors"]
-            for sector, score in sectors.items():
-                rows.append(["Critical Infrastructure", f"{sector}: {score}/5"])
-        
-        # Write to CSV file
+        # Write CSV file
         with open(file_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerows(rows)
@@ -204,109 +269,178 @@ def export_analysis_as_markdown(
             filename = get_export_filename(domain, "markdown")
             file_path = os.path.join(tempfile.gettempdir(), filename)
         
-        # Build markdown content
-        lines = []
+        # Extract structured data
+        structured = analysis_data.get("structured", {})
         
-        # Add title
-        lines.append(f"# Threat Intelligence Analysis: {domain or 'Unknown Source'}")
-        lines.append("")
-        lines.append(f"*Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
-        lines.append("")
+        # Start building markdown content
+        markdown_lines = []
+        
+        # Add title and metadata
+        url = analysis_data.get("url", "Unknown URL")
+        markdown_lines.append(f"# Threat Intelligence Analysis: {url}")
+        markdown_lines.append(f"*Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+        markdown_lines.append(f"*Model Used: {analysis_data.get('model', 'Unknown')}*")
+        markdown_lines.append("")  # Empty line
         
         # Add summary
-        if "summary" in analysis_data and analysis_data["summary"]:
-            lines.append("## Summary")
-            lines.append("")
-            lines.append(analysis_data["summary"])
-            lines.append("")
+        if "summary" in structured and structured["summary"]:
+            markdown_lines.append("## Summary")
+            markdown_lines.append(structured["summary"])
+            markdown_lines.append("")  # Empty line
         
         # Add source evaluation
-        if "source_evaluation" in analysis_data and analysis_data["source_evaluation"]:
-            lines.append("## Source Evaluation")
-            lines.append("")
+        if "source_evaluation" in structured and structured["source_evaluation"]:
+            source_eval = structured["source_evaluation"]
+            markdown_lines.append("## Source Evaluation")
             
-            source_eval = analysis_data["source_evaluation"]
-            
+            # Format reliability
             if "reliability" in source_eval:
-                lines.append(f"**Reliability:** {source_eval['reliability']}")
+                reliability = source_eval["reliability"]
+                level = reliability.get("level", "Unknown")
+                justification = reliability.get("justification", "")
+                markdown_lines.append(f"**Reliability:** {level}")
+                if justification:
+                    markdown_lines.append(f"- {justification}")
             
+            # Format credibility
             if "credibility" in source_eval:
-                lines.append(f"**Credibility:** {source_eval['credibility']}")
+                credibility = source_eval["credibility"]
+                level = credibility.get("level", "Unknown")
+                justification = credibility.get("justification", "")
+                markdown_lines.append(f"**Credibility:** {level}")
+                if justification:
+                    markdown_lines.append(f"- {justification}")
             
+            # Format source type
             if "source_type" in source_eval:
-                lines.append(f"**Source Type:** {source_eval['source_type']}")
+                markdown_lines.append(f"**Source Type:** {source_eval['source_type']}")
             
-            lines.append("")
+            markdown_lines.append("")  # Empty line
         
         # Add threat actors
-        if "threat_actors" in analysis_data and analysis_data["threat_actors"]:
-            lines.append("## Threat Actors")
-            lines.append("")
-            
-            for actor in analysis_data["threat_actors"]:
-                lines.append(f"* {actor}")
-            
-            lines.append("")
+        if "threat_actors" in structured and structured["threat_actors"]:
+            markdown_lines.append("## Threat Actors Identified")
+            for actor in structured["threat_actors"]:
+                name = actor.get("name", "Unknown Actor")
+                description = actor.get("description", "")
+                confidence = actor.get("confidence", "Medium")
+                
+                markdown_lines.append(f"### {name} (Confidence: {confidence})")
+                if description:
+                    markdown_lines.append(description)
+                
+                if "aliases" in actor and actor["aliases"]:
+                    aliases = ", ".join(actor["aliases"])
+                    markdown_lines.append(f"**Aliases:** {aliases}")
+                
+                markdown_lines.append("")  # Empty line
         
-        # Add MITRE techniques
-        if "mitre_techniques" in analysis_data and analysis_data["mitre_techniques"]:
-            lines.append("## MITRE ATT&CK Techniques")
-            lines.append("")
-            
-            techniques = analysis_data["mitre_techniques"]
-            
-            for technique in techniques:
-                if isinstance(technique, dict) and "id" in technique and "name" in technique:
-                    if "url" in technique:
-                        lines.append(f"* [{technique['id']}: {technique['name']}]({technique['url']})")
+        # Add MITRE ATT&CK techniques
+        if "mitre_techniques" in structured and structured["mitre_techniques"]:
+            markdown_lines.append("## MITRE ATT&CK Techniques")
+            for technique in structured["mitre_techniques"]:
+                technique_id = technique.get("id", "Unknown")
+                technique_name = technique.get("name", "Unknown Technique")
+                technique_desc = technique.get("description", "")
+                
+                # Create link to MITRE website if ID is present
+                if technique_id and technique_id.startswith("T"):
+                    if '.' in technique_id:
+                        # Handle sub-techniques (e.g., T1134.001)
+                        base_id, sub_id = technique_id.split('.')
+                        mitre_url = f"https://attack.mitre.org/techniques/{base_id}/{sub_id}/"
                     else:
-                        lines.append(f"* {technique['id']}: {technique['name']}")
-                elif isinstance(technique, str):
-                    lines.append(f"* {technique}")
-            
-            lines.append("")
+                        mitre_url = f"https://attack.mitre.org/techniques/{technique_id}/"
+                    
+                    markdown_lines.append(f"### [{technique_id}: {technique_name}]({mitre_url})")
+                else:
+                    markdown_lines.append(f"### {technique_name}")
+                
+                if technique_desc:
+                    markdown_lines.append(technique_desc)
+                
+                markdown_lines.append("")  # Empty line
         
         # Add key insights
-        if "key_insights" in analysis_data and analysis_data["key_insights"]:
-            lines.append("## Key Insights")
-            lines.append("")
-            
-            for insight in analysis_data["key_insights"]:
-                lines.append(f"* {insight}")
-            
-            lines.append("")
+        if "key_insights" in structured and structured["key_insights"]:
+            markdown_lines.append("## Key Threat Intelligence Insights")
+            for insight in structured["key_insights"]:
+                markdown_lines.append(f"- {insight}")
+            markdown_lines.append("")  # Empty line
         
-        # Add source bias
-        if "source_bias" in analysis_data and analysis_data["source_bias"]:
-            lines.append("## Source Bias")
-            lines.append("")
-            lines.append(analysis_data["source_bias"])
-            lines.append("")
-        
+        # Add potential issues
+        if "potential_issues" in structured and structured["potential_issues"]:
+            markdown_lines.append("## Potential Bias or Issues")
+            for issue in structured["potential_issues"]:
+                markdown_lines.append(f"- {issue}")
+            markdown_lines.append("")  # Empty line
+            
         # Add intelligence gaps
-        if "intelligence_gaps" in analysis_data and analysis_data["intelligence_gaps"]:
-            lines.append("## Intelligence Gaps")
-            lines.append("")
-            
-            for gap in analysis_data["intelligence_gaps"]:
-                lines.append(f"* {gap}")
-            
-            lines.append("")
+        if "intelligence_gaps" in structured and structured["intelligence_gaps"]:
+            markdown_lines.append("## Intelligence Gaps")
+            for gap in structured["intelligence_gaps"]:
+                markdown_lines.append(f"- {gap}")
+            markdown_lines.append("")  # Empty line
         
-        # Add critical infrastructure sectors
-        if "critical_infrastructure_sectors" in analysis_data and analysis_data["critical_infrastructure_sectors"]:
-            lines.append("## Critical Infrastructure Sectors")
-            lines.append("")
+        # Add critical sectors
+        if "critical_sectors" in structured and structured["critical_sectors"]:
+            markdown_lines.append("## Critical Infrastructure Sectors")
+            markdown_lines.append("| Sector | Relevance | Justification |")
+            markdown_lines.append("|--------|-----------|---------------|")
             
-            sectors = analysis_data["critical_infrastructure_sectors"]
-            for sector, score in sectors.items():
-                lines.append(f"* {sector}: {score}/5")
+            for sector in structured["critical_sectors"]:
+                name = sector.get("name", "Unknown")
+                score = sector.get("score", "?")
+                justification = sector.get("justification", "").replace("\n", " ")
+                
+                markdown_lines.append(f"| {name} | {score}/5 | {justification} |")
             
-            lines.append("")
+            markdown_lines.append("")  # Empty line
         
-        # Write to markdown file
+        # Add indicators of compromise if available
+        if "indicators" in structured and structured["indicators"]:
+            indicators = structured["indicators"]
+            if indicators.get("total_count", 0) > 0:
+                markdown_lines.append("## Indicators of Compromise")
+                markdown_lines.append(f"*Total: {indicators.get('total_count', 0)} indicators found*")
+                
+                if "ip_addresses" in indicators and indicators["ip_addresses"]:
+                    markdown_lines.append("### IP Addresses")
+                    for ip in indicators["ip_addresses"]:
+                        markdown_lines.append(f"- `{ip}`")
+                    markdown_lines.append("")  # Empty line
+                
+                if "domains" in indicators and indicators["domains"]:
+                    markdown_lines.append("### Domains")
+                    for domain_item in indicators["domains"]:
+                        markdown_lines.append(f"- `{domain_item}`")
+                    markdown_lines.append("")  # Empty line
+                
+                if "urls" in indicators and indicators["urls"]:
+                    markdown_lines.append("### URLs")
+                    for url_item in indicators["urls"]:
+                        markdown_lines.append(f"- `{url_item}`")
+                    markdown_lines.append("")  # Empty line
+                
+                if "file_hashes" in indicators and indicators["file_hashes"]:
+                    markdown_lines.append("### File Hashes")
+                    for hash_item in indicators["file_hashes"]:
+                        markdown_lines.append(f"- `{hash_item}`")
+                    markdown_lines.append("")  # Empty line
+                
+                if "email_addresses" in indicators and indicators["email_addresses"]:
+                    markdown_lines.append("### Email Addresses")
+                    for email in indicators["email_addresses"]:
+                        markdown_lines.append(f"- `{email}`")
+                    markdown_lines.append("")  # Empty line
+        
+        # Add a footer
+        markdown_lines.append("---")
+        markdown_lines.append("*Generated by ThreatInsight-Analyzer*")
+        
+        # Write markdown content to file
         with open(file_path, 'w', encoding='utf-8') as f:
-            f.write("\n".join(lines))
+            f.write("\n".join(markdown_lines))
         
         return {
             "success": True,

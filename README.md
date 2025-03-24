@@ -1,8 +1,9 @@
+
+
 # Artificial Cyber Intelligence Analyst 
-[![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
+[![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE.md)
-
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=CenterforCyberIntelligence.ThreatInsight-Analyzer)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![GitHub Stars](https://img.shields.io/github/stars/CenterforCyberIntelligence/ThreatInsight-Analyzer.svg?style=flat&color=8B7355)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/CenterforCyberIntelligence/ThreatInsight-Analyzer.svg?style=flat&color=7B886B)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer/network/members)
@@ -26,6 +27,7 @@ A web-based tool that uses AI to aid in rapid summarization and analysis of cybe
 - [Installation](#installation)
 - [Configuration](#configuration)
   - [URL Validation Configuration](#url-validation-configuration)
+  - [Environment Variable Configuration](#environment-variable-configuration)
 - [Available Models](#available-models)
 - [Running the Application](#running-the-application)
 - [Usage](#usage)
@@ -37,6 +39,7 @@ A web-based tool that uses AI to aid in rapid summarization and analysis of cybe
 - [Testing](#testing)
 - [Disclaimer](#disclaimer)
 - [License](#license)
+- [Startup Optimizations](#startup-optimizations)
 
 ## Current Status
 
@@ -51,16 +54,21 @@ This project is in active development. Features are being implemented incrementa
 
 > **IMPORTANT NOTICE**: This is a ✨ vibe-coding ✨ project I started because I wanted a rapid way to summarize and extract critical intelligence information from articles I read on the internet. Because I am not a developer by trade, and I am heavily relying on AI Agents to support my develoment of this platform, bugs and issues are expected. Use at your own risk and enjoy the process. If you have suggestions on how to improve the project, please let me know!
 
-## Documentation
-
-- [README.md](README.md) - Project overview and getting started guide
-- [CHANGELOG.md](CHANGELOG.md) - History of changes and version updates
-- [Known Issues.md](Known%20Issues.md) - Current and resolved issues
-- [TODO.md](TODO.md) - Roadmap for future features and improvements
-- [LICENSE.md](LICENSE.md) - License information
-
 ## Technology Overview
-- **Release Date:** March 22, 2025
+
+- **Backend**: Python with Flask for the web framework
+- **Frontend**: HTML, CSS, and JavaScript with HTMX for dynamic content
+- **AI Integration**: OpenAI API with structured JSON schema validation 
+  - Using the newer `responses.create()` API with strict schema validation
+  - Robust error handling for content filters, token limits, and refusals
+  - Graceful degradation with user-friendly error messages
+  - Enhanced retry logic with exponential backoff
+- **Database**: SQLite for data persistence
+  - Optimized schema with indexed fields for faster queries
+  - Version-controlled migration system
+  - Denormalized data for efficient retrieval
+- **Content Extraction**: Newspaper3k for article text extraction
+- **IOC Extraction**: Regex-based extraction of Indicators of Compromise
 
 ### Languages
 <div align="center">
@@ -83,24 +91,35 @@ This project is in active development. Features are being implemented incrementa
 <div align="center">
   <img src="https://img.shields.io/badge/Database-SQLite-817865?style=for-the-badge&logo=sqlite" alt="SQLite" />
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/API-OpenAI-6B8A87?style=for-the-badge&logo=openai" alt="OpenAI API" />
+  <img src="https://img.shields.io/badge/Powered_by-OpenAI-8A2BE2?style=for-the-badge&logo=openai&logoColor=white&labelColor=black)" alt="OpenAI API" />
 </div>
 
 ## Version
-Current version: 1.0.1
+
+**Current Version:** 1.1.0
+
+### Version History
+
+- **1.1.0** (2025-03-23): Major refactoring to use OpenAI's structured JSON responses, improved error handling, added threat actor identification and intelligence gaps analysis, added historical analysis browsing capability.
+- **1.0.1**: Minor updates and bug fixes.
+- **1.0.0**: Initial release with core functionality.
 
 ## Features
-- Web-based user interface for submitting and reviewing threat intelligence articles
-- Automated OpenAI-powered analysis of cybersecurity articles and reports
-- Extraction and standardization of MITRE ATT&CK techniques with proper linking
-- Source credibility and reliability assessments
-- Threat actor identification and categorization
-- Critical infrastructure sector impact analysis
-- Database storage for historical analysis and quick retrieval
-- Support for multiple OpenAI models with automatic cost calculation
-- Model ID normalization system to handle different model versions
-- Statistics dashboard with token usage and cost breakdown
-- Export analysis results in multiple formats (JSON, CSV, PDF, Markdown) for offline use and sharing
+
+* **Cyber Threat Analysis**: Analyze cybersecurity articles to extract key intelligence points
+* **Source Evaluation**: Automatic assessment of source reliability and credibility
+* **MITRE ATT&CK Framework**: Identification of relevant MITRE ATT&CK techniques mentioned in content
+* **Threat Actor Identification**: Identify and assess threat actors mentioned in articles with confidence levels
+* **Intelligence Gaps Analysis**: Highlight missing information or intelligence gaps in the analyzed content
+* **IOC Extraction**: Automatic detection of Indicators of Compromise within article text
+* **Critical Infrastructure Assessment**: Evaluate relevance to 16 critical infrastructure sectors
+* **Structured JSON Responses**: Leverages OpenAI's JSON Schema validation for reliable, consistent output structure
+* **Multiple Export Formats**: Export analyses as JSON, CSV, PDF, or Markdown
+* **Caching**: Save API costs by caching previously analyzed URLs
+* **Usage Statistics**: Track token usage and costs by model
+* **Multi-Model Support**: Choose from various OpenAI models based on analysis needs
+* **Custom API Integration**: Use your own OpenAI API key
+* **Optimized Performance**: Improved database structure for faster queries and data retrieval
 
 ## Interface Preview
 
@@ -121,7 +140,7 @@ Current version: 1.0.1
 │   ├── config/            # Configuration
 │   │   └── config.py      # Config classes
 │   ├── models/            # Database models
-│   │   └── database.py    # Database operations
+│   │   └── database.py    # Database operations and migration system
 │   └── utilities/         # Utility functions
 │       ├── logger.py      # Logging utilities
 │       ├── article_analyzer.py  # AI analysis logic and parsing
@@ -165,233 +184,126 @@ cp .env.template .env
 
 ## Configuration
 
-Required environment variables in `.env`:
+The application can be configured using environment variables, which can be set in a `.env` file at the root of the project. The following variables are available:
 
-```
-# OpenAI API Configuration
-OPENAI_API_KEY=your_api_key_here
+### UI Configuration
 
-# OpenAI Model Configuration
-OPENAI_MODEL=gpt-4o
+- `HEADING_FONT`: Configure the font used for headings and titles throughout the application
+  - Options: "Rajdhani" (default), "Orbitron", "Exo", "Quantico", "Share Tech Mono", "Audiowide", "JetBrains Mono"
+  - Format: Valid Google Font name (case-sensitive)
+  - Impact: Changes appearance of headings, titles, and UI elements
 
-# Available models with their descriptions (JSON format)
-AVAILABLE_MODELS={"gpt-4o-mini":{"name":"GPT-4o mini","recommended_for":"Quick analysis of news articles and blog posts"},"gpt-4o":{"name":"GPT-4o","recommended_for":"Detailed analysis of technical reports and research papers"},"gpt-4-turbo":{"name":"GPT-4.5 Turbo","recommended_for":"In-depth analysis of complex threat reports and intelligence briefs"}}
+### OpenAI API Configuration
 
-# Model Parameters
-OPENAI_TEMPERATURE=0.1
-OPENAI_MAX_TOKENS=4000
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `OPENAI_API_KEY` | Your OpenAI API key | None | Yes |
+| `OPENAI_MODEL` | Default model to use for analysis | `gpt-4o` | No |
+| `OPENAI_TEMPERATURE` | Controls randomness (0.0-1.0) | `0.0` | No |
+| `OPENAI_MAX_TOKENS` | Maximum tokens in response | `1500` | No |
+| `OPENAI_SEED` | Seed for reproducible results | `42` | No |
+| `OPENAI_BASE_URL` | API endpoint URL | `https://api.openai.com/v1` | No |
+| `OPENAI_API_TIMEOUT` | Timeout in seconds for API requests | `60` | No |
 
-# Flask Application Settings
-FLASK_HOST=0.0.0.0
-FLASK_PORT=8000
-FLASK_DEBUG=1
-```
+#### Flask Server Settings
 
-### URL Validation Configuration
-
-The application includes a robust URL validation system introduced in version 1.0.1. You can customize the validation rules by editing the following constants in `app/blueprints/analysis.py`:
-
-```python
-# List of allowed top-level domains
-ALLOWED_TLDS = [
-    'com', 'org', 'net', 'gov', 'edu', 'mil', 'int', 'io', 'co',
-    'uk', 'ca', 'au', 'eu', 'de', 'fr', 'jp', 'ru', 'cn', 'in',
-    'br', 'mx', 'za', 'ch', 'se', 'no', 'dk', 'fi', 'nl', 'be'
-]
-
-# List of blocked domains (e.g., known malicious sites)
-BLOCKED_DOMAINS = [
-    'example-malicious-site.com',
-    'known-phishing-domain.net'
-    # Add more as needed
-]
-```
-
-To enhance security:
-1. Add known malicious domains to the `BLOCKED_DOMAINS` list
-2. Restrict the `ALLOWED_TLDS` list to only necessary top-level domains
-3. The validator enforces HTTP/HTTPS protocols only and rejects other schemes
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLASK_HOST` | Server host address | `0.0.0.0` | No |
+| `FLASK_PORT` | Server port number | `5000` | No |
+| `FLASK_DEBUG` | Enable debug mode | `False` | No |
+| `FLASK_ENV` | Set the Flask environment | `production` | No |
 
 ## Available Models
 
-The tool supports three OpenAI models with different price points and capabilities:
+The application supports various OpenAI models for analysis. The default model is `gpt-4o`, but you can choose from the following options:
 
-- **GPT-4o mini** ($0.15/1M tokens)
-  - Quick analysis of news articles
-  - Best for basic content analysis
-
-- **GPT-4o** ($0.50/1M input, $1.50/1M output)
-  - Detailed technical analysis
-  - Good balance of speed and depth
-
-- **GPT-4 Turbo** ($10/1M input, $30/1M output)
-  - In-depth analysis of complex reports
-  - Best for critical assessments
+- `gpt-4o`: Optimized for structured JSON output
+- `gpt-3.5-turbo`: Balanced performance and cost
+- `gpt-3.5-turbo-16k`: Larger context window for longer articles
+- `gpt-4`: Advanced capabilities and more accurate results
 
 ## Running the Application
 
-Start the Flask server:
+1. Activate the virtual environment
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+2. Run the application
 ```bash
 python run.py
 ```
 
-Open `http://localhost:8000` in your browser
+The application will be accessible at `http://localhost:5000` by default.
 
 ## Usage
 
-1. Enter a URL to analyze
-2. Select your preferred OpenAI model
-3. View the structured analysis results, including:
-   - Article summary
-   - Source evaluation
-   - MITRE ATT&CK techniques
-   - Threat actors identified
-   - Critical infrastructure sector relevance
-4. Export the analysis in your preferred format (JSON, CSV, PDF, or Markdown) using the download button in the analysis results
+1. Open the application in your browser (default: http://localhost:5000)
+2. Enter a URL to a cybersecurity article
+3. Select the appropriate OpenAI model for analysis
+4. View the comprehensive threat intelligence report
+5. Access analysis history through the History page in the navigation menu
 
 ## Development Status
 
-This project is a work-in-progress, and many features are still being refined. The code is shared in its current state to demonstrate the concept and gather feedback. Please review the Known Issues document for a list of identified issues. If you like this project, consider buying me a coffee!
+This project is in active development. Features are being implemented incrementally, and the codebase is evolving. Known issues are documented in the [Known Issues](Known%20Issues.md) file. If you are a fan of this project and want to see it keep growing, consider adding some fuel to the tank. 
 
 <div align="center">
-  <div align="center">
-    <a href="#development-status">
-      <img src="https://img.shields.io/badge/Status-Active_Development-BC8F8F?style=for-the-badge" alt="Active Development" />
-    </a>
-  </div>
+  <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
+  </a>
   <p>
-  <div align="center">
-    <a href="https://buymeacoffee.com/centerforcyberintel" target="_blank">
-      <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" >
-    </a>
-  </div>
 </div>
 
 ## Database Structure
 
-The application uses SQLite for data storage with the following schema design:
+The application uses a SQLite database to store analysis results and metadata. The database structure is as follows:
 
 ### Tables
 
-1. **articles** - Stores metadata about analyzed articles
-   - `id`: INTEGER PRIMARY KEY - Unique identifier
-   - `url`: TEXT UNIQUE - The URL of the analyzed article
-   - `title`: TEXT - The title of the article
-   - `content_length`: INTEGER - Length of the extracted content
-   - `extraction_time`: REAL - Time taken to extract content (seconds)
-   - `analysis_time`: REAL - Time taken to analyze content (seconds)
-   - `model`: TEXT - The OpenAI model used for analysis
-   - `created_at`: TIMESTAMP - When the analysis was created
-
-2. **analysis_results** - Stores the actual analysis content
-   - `id`: INTEGER PRIMARY KEY - Unique identifier
-   - `article_id`: INTEGER - Foreign key to articles table
-   - `raw_text`: TEXT - Raw text response from the AI
-   - `structured_data`: TEXT - JSON-formatted structured analysis
-
-3. **token_usage** - Tracks OpenAI API token usage
-   - `id`: INTEGER PRIMARY KEY - Unique identifier
-   - `model`: TEXT - The model used
-   - `input_tokens`: INTEGER - Number of input tokens
-   - `output_tokens`: INTEGER - Number of output tokens
-   - `cached`: BOOLEAN - Whether the result was cached
-   - `timestamp`: TIMESTAMP - When the tokens were used
-
-4. **indicators** - Stores extracted indicators of compromise
-   - `id`: INTEGER PRIMARY KEY - Unique identifier
-   - `article_id`: INTEGER - Foreign key to articles table
-   - `indicator_type`: TEXT - Type of indicator (ipv4, domain, etc.)
-   - `value`: TEXT - The actual indicator value
-   - `created_at`: TIMESTAMP - When the indicator was extracted
+- `analysis_results`: Stores analysis results with metadata
+- `analysis_history`: Tracks analysis history and usage statistics
+- `blocked_domains`: Lists domains blocked from analysis
 
 ### Database Functions
 
-The application includes several helper functions for database operations:
-
-- `get_db_connection()`: Context manager for secure database connections
-- `execute_query()`: Safe execution of parameterized SQL queries
-- `init_db()`: Initialize the database schema if it doesn't exist
-- `store_analysis()`: Store new analysis results
-- `update_analysis()`: Update existing analysis results
-- `get_analysis_by_url()`: Retrieve analysis by article URL
-- `get_recent_analyses()`: Get the most recent analyses
-- `track_token_usage()`: Record OpenAI API token usage
-- `get_token_usage_stats()`: Retrieve token usage statistics
-- `store_indicators()`: Store extracted indicators
-- `get_indicators_by_article_id()`: Get indicators for a specific article
-- `get_indicators_by_url()`: Get indicators by article URL
-- `get_indicator_stats()`: Get statistics about extracted indicators
-
-All database operations use parameterized queries to prevent SQL injection and include proper error handling. The database is automatically initialized when the application starts.
+- `create_database()`: Initializes the database and creates tables
+- `migrate_database()`: Migrates the database schema to the latest version
+- `save_analysis_result()`: Saves analysis results to the database
+- `get_analysis_result()`: Retrieves analysis results from the database
+- `get_analysis_history()`: Retrieves analysis history from the database
+- `update_analysis_history()`: Updates analysis history with usage statistics
+- `is_domain_blocked()`: Checks if a domain is blocked from analysis
 
 ## Security Notes
 
-- Never commit `.env` or any files containing API keys
-- Review `.gitignore` to ensure sensitive data is excluded
-- Monitor token usage and costs
-- All analyses should be validated by a qualified analyst
-- Database operations use parameterized queries to prevent SQL injection attacks
-- URL validation prevents malicious input and blocks potentially dangerous domains
-- User inputs are sanitized to prevent cross-site scripting (XSS) attacks
+- Ensure that your OpenAI API key is kept secure and not exposed in the code or version control system.
+- The application includes a domain blocking system to prevent analysis of known malicious or phishing websites. Blocked domains are stored in `app/data/blocked_domains.txt`.
+- The application uses environment variables for configuration, which can be set in a `.env` file in the project root.
 
 ## Testing
 
-The project includes a comprehensive test suite using pytest. To run the tests:
+The application includes a testing suite to ensure functionality and reliability. To run the tests, use the following command:
 
-1. Make sure you have the development dependencies installed:
-   ```
-   pip install -r requirements-dev.txt
-   ```
-
-2. Run the tests with coverage report:
-   ```
-   pytest
-   ```
-   
-   This will run all tests and generate a coverage report. For more detailed options:
-   ```
-   # Run with verbose output
-   pytest -v
-   
-   # Run specific test file
-   pytest tests/test_article_analyzer.py
-   
-   # Run tests matching a pattern
-   pytest -k "analyzer or extractor"
-   
-   # Generate HTML coverage report
-   pytest --cov=app --cov-report=html
-   ```
-
-3. View test coverage:
-   After running the tests with coverage, open `htmlcov/index.html` in your browser to see the detailed coverage report.
-
-4. Test categories:
-   The tests are organized by categories using pytest markers:
-   ```
-   # Run only unit tests
-   pytest -m unit
-   
-   # Run only integration tests
-   pytest -m integration
-   
-   # Run only database-related tests
-   pytest -m database
-   ```
+```bash
+pytest tests/
+```
 
 ## Disclaimer
 
-This tool uses AI to analyze cybersecurity articles. Results may vary between analyses of the same content. While assessments are generally consistent, specific details, ratings, and identified techniques may differ. All analyses should be reviewed by a qualified analyst before making security decisions.
+This project is for educational and research purposes only. The authors are not responsible for any misuse or damage caused by this software. Use at your own risk.
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-- You are free to share and adapt this work for non-commercial purposes
-- You must provide attribution to the [Center for Cyber Intelligence](https://www.centerforcyberintelligence.org)
-- Commercial use is strictly prohibited without prior written consent
+## Startup Optimizations
 
-See the [LICENSE.md](LICENSE.md) file for full details.
+To optimize startup time and performance, consider the following options:
 
-Copyright © 2025 [Center for Cyber Intelligence](https://www.centerforcyberintelligence.org). All rights reserved.
-
+- Use a production-ready WSGI server like Gunicorn or uWSGI instead of the built-in Flask server.
+- Enable caching for static assets to reduce server load.
+- Use a content delivery network (CDN) to serve static assets.
+- Optimize database queries and indexing for faster data retrieval.
+- Monitor and optimize resource usage to ensure optimal performance.

@@ -11,25 +11,26 @@
         </div>
         <div class="stat-card">
             <div class="stat-title">Total Cost</div>
-            <div class="stat-value">$
+            <div class="stat-value">
                 {% set total_cost = 0 %}
-                {% if 'gpt-4o-mini' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4o-mini'].regular_input * model_prices['gpt-4o-mini'].input + stats.models['gpt-4o-mini'].cached_input * model_prices['gpt-4o-mini'].cached + stats.models['gpt-4o-mini'].total_output * model_prices['gpt-4o-mini'].output) / 1000000 %}
-                {% endif %}
-                {% if 'gpt-4o' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4o'].regular_input * model_prices['gpt-4o'].input + stats.models['gpt-4o'].cached_input * model_prices['gpt-4o'].cached + stats.models['gpt-4o'].total_output * model_prices['gpt-4o'].output) / 1000000 %}
-                {% endif %}
-                {% if 'gpt-4-turbo' in stats.models %}
-                    {% set total_cost = total_cost + (stats.models['gpt-4-turbo'].regular_input * model_prices['gpt-4-turbo'].input + stats.models['gpt-4-turbo'].cached_input * model_prices['gpt-4-turbo'].cached + stats.models['gpt-4-turbo'].total_output * model_prices['gpt-4-turbo'].output) / 1000000 %}
-                {% endif %}
-                {{ total_cost | round(4) }}
+                {% for model_id, model_stats in stats.models.items() %}
+                    {% if model_id in model_prices and model_prices[model_id] is mapping %}
+                        {% set model_price = model_prices[model_id] %}
+                        {% if model_price.input is defined and model_price.cached is defined and model_price.output is defined %}
+                            {% set total_cost = total_cost + (model_stats.regular_input * model_price.input + 
+                                                           model_stats.cached_input * model_price.cached + 
+                                                           model_stats.total_output * model_price.output) / 1000000 %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                ${{ total_cost | round(4) }}
             </div>
         </div>
     </div>
 
     <!-- Token Breakdown -->
     <div class="token-breakdown">
-        <h3>Token Distribution</h3>
+        <h3><i class="fas fa-exchange-alt"></i> Token Distribution</h3>
         <div class="token-grid">
             <div class="token-type">
                 <span class="type-label">Input Tokens</span>
@@ -48,7 +49,7 @@
 
     <!-- Model Usage -->
     <div class="model-usage">
-        <h3>Usage by Model</h3>
+        <h3><i class="fas fa-microchip"></i> Usage by Model</h3>
         <div class="model-grid">
             {% for model_id, model_stats in stats.models.items() %}
             <div class="model-card">
@@ -70,7 +71,20 @@
                     </div>
                     <div class="model-cost">
                         <span>Cost</span>
-                        <span>${{ ((model_stats.regular_input * model_prices[model_id].input + model_stats.cached_input * model_prices[model_id].cached + model_stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}</span>
+                        <span>
+                            {% if model_id in model_prices and model_prices[model_id] is mapping %}
+                                {% set model_price = model_prices[model_id] %}
+                                {% if model_price.input is defined and model_price.cached is defined and model_price.output is defined %}
+                                    ${{ ((model_stats.regular_input * model_price.input + 
+                                         model_stats.cached_input * model_price.cached + 
+                                         model_stats.total_output * model_price.output) / 1000000) | round(4) }}
+                                {% else %}
+                                    $0.00 (pricing incomplete)
+                                {% endif %}
+                            {% else %}
+                                $0.00 (pricing unavailable)
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </div>

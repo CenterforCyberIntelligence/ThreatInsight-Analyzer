@@ -368,4 +368,154 @@ def test_analyze_article_verbose_mode():
         
         # Verify first call contains the expected message
         first_call_args = mock_print.call_args_list[0][0]
-        assert "Starting analysis of article" in first_call_args[0] 
+        assert "Starting analysis of article" in first_call_args[0]
+
+def test_analyze_article_structured_json_response():
+    """Test article analysis with OpenAI's structured JSON responses."""
+    content = "This is a test article about cybersecurity threats by APT29."
+    url = "https://example.com/article"
+    
+    # Sample structured JSON response from the OpenAI API
+    json_response = {
+        "summary": "This article discusses cybersecurity threats posed by APT29, a Russian state-sponsored threat actor.",
+        "source_evaluation": {
+            "reliability": {
+                "level": "Medium",
+                "justification": "The article provides some technical details but lacks comprehensive evidence."
+            },
+            "credibility": {
+                "level": "High",
+                "justification": "The source is a reputable cybersecurity organization with a track record of accurate reporting."
+            },
+            "source_type": "Cybersecurity Vendor"
+        },
+        "threat_actors": [
+            {
+                "name": "APT29",
+                "description": "Russian state-sponsored threat actor also known as Cozy Bear.",
+                "confidence": "High",
+                "aliases": ["Cozy Bear", "The Dukes", "Nobelium"]
+            }
+        ],
+        "mitre_techniques": [
+            {
+                "id": "T1566",
+                "name": "Phishing",
+                "description": "APT29 uses spear-phishing emails with malicious attachments."
+            },
+            {
+                "id": "T1190",
+                "name": "Exploit Public-Facing Application",
+                "description": "Exploits vulnerabilities in public-facing web applications."
+            }
+        ],
+        "key_insights": [
+            "APT29 has been targeting government organizations in multiple countries.",
+            "The group uses sophisticated malware that can evade detection.",
+            "Recent campaigns show a shift towards supply chain attacks."
+        ],
+        "potential_issues": [
+            "The article may overstate the technical capabilities of APT29.",
+            "Some of the attribution evidence is circumstantial."
+        ],
+        "intelligence_gaps": [
+            "The exact command and control infrastructure is not fully documented.",
+            "The initial access vector for some of the mentioned incidents is unknown."
+        ],
+        "critical_sectors": [
+            {
+                "name": "Government Services & Facilities Sector",
+                "score": 5,
+                "justification": "APT29 primarily targets government organizations."
+            },
+            {
+                "name": "Defense Industrial Base Sector",
+                "score": 4,
+                "justification": "Defense contractors are frequently targeted by this group."
+            }
+        ]
+    }
+    
+    # Create a mock for the OpenAI API response
+    mock_response = MagicMock()
+    mock_response.model = "gpt-4o"
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = json.dumps(json_response)
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 200
+    mock_response.usage.completion_tokens = 300
+    mock_response.usage.total_tokens = 500
+    
+    with patch('openai.OpenAI.chat.completions.create', return_value=mock_response):
+        result = analyze_article(content, url, model="gpt-4o", structured=True, verbose=False)
+        
+        # Verify the result structure
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "text" in result
+        assert "structured" in result
+        assert "api_details" in result
+        
+        # Verify the structured data
+        structured = result["structured"]
+        assert structured["summary"] == json_response["summary"]
+        assert structured["source_evaluation"]["reliability"]["level"] == "Medium"
+        assert structured["source_evaluation"]["credibility"]["level"] == "High"
+        
+        # Verify threat actors
+        assert len(structured["threat_actors"]) == 1
+        assert structured["threat_actors"][0]["name"] == "APT29"
+        assert "Cozy Bear" in structured["threat_actors"][0]["aliases"]
+        
+        # Verify MITRE techniques
+        assert len(structured["mitre_techniques"]) == 2
+        technique_ids = [t["id"] for t in structured["mitre_techniques"]]
+        assert "T1566" in technique_ids
+        assert "T1190" in technique_ids
+        
+        # Verify intelligence gaps
+        assert len(structured["intelligence_gaps"]) == 2
+        
+        # Verify critical sectors
+        assert len(structured["critical_sectors"]) == 2
+        sector_names = [s["name"] for s in structured["critical_sectors"]]
+        assert "Government Services & Facilities Sector" in sector_names
+        assert "Defense Industrial Base Sector" in sector_names
+
+def test_analyze_article_malformed_json_response():
+    """Test article analysis with malformed JSON response."""
+    content = "This is a test article about cybersecurity threats."
+    url = "https://example.com/article"
+    
+    # Simulate a malformed JSON response
+    mock_response = MagicMock()
+    mock_response.model = "gpt-4o"
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "This is not valid JSON {incomplete:"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
+    mock_response.usage.total_tokens = 150
+    
+    with patch('openai.OpenAI.chat.completions.create', return_value=mock_response):
+        result = analyze_article(content, url, model="gpt-4o", structured=True, verbose=False)
+        
+        # Verify the error handling
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "text" in result
+        assert "structured" in result
+        
+        # Check that the fallback structure was created
+        structured = result["structured"]
+        assert "summary" in structured
+        assert "Error parsing response" in structured["summary"]
+        assert "source_evaluation" in structured
+        assert structured["source_evaluation"]["reliability"]["level"] == "Low"
+        assert structured["mitre_techniques"] == []
+        assert "key_insights" in structured
+        assert "potential_issues" in structured
+        assert "intelligence_gaps" in structured
+        assert structured["critical_sectors"] == [] 

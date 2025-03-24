@@ -23,12 +23,21 @@ def statistics():
     # Create a normalized model prices dictionary for the template
     normalized_model_prices = {}
     for analysis in recent_analyses:
-        if analysis.get('model_id'):
+        # Use 'model' key instead of 'model_id' for consistency with database schema
+        model_key = analysis.get('model')
+        if model_key:
             # Normalize the model ID to handle version differences
-            normalized_id = Config.normalize_model_id(analysis['model_id'])
+            normalized_id = Config.normalize_model_id(model_key)
             # Map the original model ID to its normalized pricing
-            if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
-                normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+            if normalized_id in model_prices and model_key not in normalized_model_prices:
+                normalized_model_prices[model_key] = model_prices[normalized_id]
+            # If no direct match found, check if we can extract the base model
+            elif model_key not in normalized_model_prices:
+                base_models = list(model_prices.keys())
+                for base_model in base_models:
+                    if base_model in model_key:
+                        normalized_model_prices[model_key] = model_prices[base_model]
+                        break
     
     # Merge normalized prices with standard prices
     template_model_prices = {**model_prices, **normalized_model_prices}
@@ -66,12 +75,21 @@ def refresh_statistics():
     # Create a normalized model prices dictionary for the template
     normalized_model_prices = {}
     for analysis in recent_analyses:
-        if analysis.get('model_id'):
+        # Use 'model' key instead of 'model_id' for consistency with database schema
+        model_key = analysis.get('model')
+        if model_key:
             # Normalize the model ID to handle version differences
-            normalized_id = Config.normalize_model_id(analysis['model_id'])
+            normalized_id = Config.normalize_model_id(model_key)
             # Map the original model ID to its normalized pricing
-            if normalized_id in model_prices and analysis['model_id'] not in normalized_model_prices:
-                normalized_model_prices[analysis['model_id']] = model_prices[normalized_id]
+            if normalized_id in model_prices and model_key not in normalized_model_prices:
+                normalized_model_prices[model_key] = model_prices[normalized_id]
+            # If no direct match found, check if we can extract the base model
+            elif model_key not in normalized_model_prices:
+                base_models = list(model_prices.keys())
+                for base_model in base_models:
+                    if base_model in model_key:
+                        normalized_model_prices[model_key] = model_prices[base_model]
+                        break
     
     # Merge normalized prices with standard prices
     template_model_prices = {**model_prices, **normalized_model_prices}

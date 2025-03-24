@@ -5,72 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-03-22
+## [1.1.0] - 2025-03-23
 
 ### Added
-- Minor Update release of Artificial Cyber Intelligence Analyst™ with updates to core functionality:
-  - Cybersecurity article analysis with OpenAI API integration
-  - IoC and MITRE ATT&CK techniques extraction and identification
-  - Database for storing and retrieving analyses
-  - Export capabilities backend infrastructure in multiple formats (JSON, CSV, PDF, Markdown)
-  - Interactive web interface with HTMX
-  - Statistics dashboard for tracking usage
-  - Settings management for API configuration
-- Robust URL validation system:
-  - URL format validation with validators package
-  - TLD validation with configurable allowlist
-  - Domain blocklist for security
-  - Protocol validation (HTTP/HTTPS only)
-- Database improvements:
-  - Connection context manager for proper resource handling
-  - Safe query execution helper function
-  - Improved error logging for operations
-- Custom Jinja2 filter 'zfill' for zero-padding strings in templates
-- Model ID normalization system for different OpenAI model versions
-- Comprehensive test suite with pytest
-  - Unit tests for all major components
-  - Integration tests for key workflows
-  - Test fixtures for database, client, and API mocks
-  - Code coverage reporting
-  - Categorized tests with pytest markers
-- Configuration file (pytest.ini) for test settings
-- Frontend implementation for exporting analysis results in multiple formats:
-  - Export dropdown menu in the analysis results UI
-  - Support for JSON, CSV, PDF, and Markdown exports
-  - Export routes in the analysis blueprint 
-- TODO.md file with roadmap for future features and improvements
-- Database Structure documentation in README.md for developers
+- Historical analysis browsing (partially implemented)
+- Enhanced threat actor identification and critical infrastructure sector relevance scoring
+- Raw JSON data access with download capability and improved filename generation
+- Environment variable configuration support for database, logging, OpenAI parameters, and more
+- Improved statistics dashboard for model usage and costs
+- Multiple OpenAI model support with selection UI (partially implemented)
+- Caching system for previously analyzed URLs with time indicators
+- Bootstrap integration for improved UI components:
+  - Loading animations and spinners
+  - Modal dialogs and toast notifications
+  - Responsive layouts and navigation
+- Custom scrollbars and consistent navigation structure
 
-#### Security Updates
-- Input sanitization and validation:
-  - URL parameter validation to prevent injection attacks
-  - HTML escaping to prevent XSS attacks
-  - Model selection and parameter sanitization
-- Database protections:
-  - Parameterized queries to prevent SQL injection
-  - Improved connection management and transaction handling
-  - Enhanced error handling and logging
-- Domain security:
-  - Blocklist to prevent requests to known malicious sites
-  - Protocol validation to prevent non-HTTP/HTTPS schemes
+### Changed
+- Major refactoring to use OpenAI's structured JSON responses
+- Enhanced UI for improved intelligence report readability
+- Better MITRE ATT&CK techniques display layout
+- Improved debugging capabilities with timestamps and detailed reporting
+- Refactored Config class to use class attributes and standardized environment variables
+- Migrated from custom CSS to Bootstrap 5.3 design system
+- Consolidated most CSS styles into the central stylesheet removing inline styles
+- Implemented consistent header and footer across all application pages
+
+### Fixed
+- Source evaluation metrics calculation
+- Error recovery for failed API calls
+- History page display when using `limit=None`
+- JSON handling improvements:
+  - Robust error handling for parsing and formatting
+  - Cross-browser clipboard operations (not fully tested)
+  - Visual feedback for some operations
+- Database configuration and environment variable usage
+- Improvements to article extraction reliability for complex pages
+- MITRE ATT&CK technique linking and display (known issues still exist with sub-techniques)
+- UI issues:
+  - Long URL and title display problems
+  - Modal functionality
+  - Button and badge styling consistency
+  - Tab navigation in analysis display
+  - Source evaluation data displays
+  - Table styling and contrast
+  - Template rendering for special cases
+- Application stability issues with statistics, imports, and database connections
+
+### Security
+- Input sanitization for URL parameters in debug endpoints (untested)
+- Proper Content-Type headers for downloaded files (untested)
+- Authentication and environment checks for debug endpoints
+- Protection against SQL injection (untested)
+- Domain security with blocklist for malicious sites (partially implemented)
+- Protocol validation for URL schemes (untested)
+
+### Technical Debt
+- Resolved browser-specific clipboard implementation issues
+- Improved error handling and visualization consistency
+- Consolidated environment variable loading
+- Standardized configuration parameter naming
+- Documented remaining styling challenges and code duplication issues
+- Eliminated redundant configuration code
+
+## [1.0.0] - 2025-03-22
+
+### Added
+- Core functionality for analyzing cybersecurity articles via URL
+- Integration with OpenAI API for threat intelligence analysis
+- Source evaluation metrics (reliability, credibility)
+- MITRE ATT&CK technique identification and linking
+- Threat actor identification with confidence ratings
+- Critical infrastructure sector relevance scoring
+- Google Fonts integration with Rajdhani for headings
+- "Support This Project" button in header navbar
+- Cyber-themed styling with consistent header and footer
+
+### Security
+- Input sanitization and validation for URLs and user inputs
+- Database protections against SQL injection
+- Domain security with blocklist for malicious sites
+
+### Fixed
+- Template rendering for MITRE ATT&CK techniques
+- Token stats display edge cases
+- Application stability issues
+- UI improvements for consistent styling
 
 ### Changed
 - Renamed project from "ThreatInsight Analyzer" to "Artificial Cyber Intelligence Analyst™"
 - Updated all references in documentation, templates, and code
-- Updated UI elements to reflect the new name
-
-### Fixed
-- Template rendering issues:
-  - MITRE ATT&CK technique display for sub-techniques
-  - Token stats display edge cases
-- Application stability:
-  - Statistics page errors related to model version discrepancies
-  - Application crash caused by incorrect module import
-  - Database connection and transaction handling
-- Test improvements:
-  - Statistics blueprint tests with variable name alignment
-  - Indicator extractor tests using public API functions
-  - Logger module tests for better coverage
-  - Hash type expectations in indicator extraction
-  - Text extraction whitespace handling
-  - CVE identifier case handling
+- Optimized UI for intelligence report readability

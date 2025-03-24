@@ -3,214 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Article Analyzer</title>
+    <title>Artificial Cyber Intelligence Analyst™</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Dynamic Heading Font -->
+    <link href="https://fonts.googleapis.com/css2?family={{ heading_font }}:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', t=current_time) }}">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <!-- CSS Variable for Font -->
+    <style>
+        :root {
+            --app-heading-font: '{{ heading_font }}';
+        }
+    </style>
     <!-- HTMX Library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container">
-            <div class="navbar-content">
-                <a href="/" class="logo">
-                    <i class="fas fa-shield-alt"></i>
-                    Center for Cyber Intelligence™ | 
-                    <span style="font-weight: 400; opacity: 0.8;">  Artificial Cyber Intelligence Analyst™</span>
-                </a>
-                <div class="model-badge">
-                    <i class="fas fa-brain"></i>
-                    Powered by OpenAI
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand cyber-brand" href="/">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                Center for Cyber Intelligence <span class="cyber-accent">Artificial Cyber Intelligence Analyst™</span>
+            </a>
+            <div class="d-flex">
+                <span class="powered-by-badge">
+                    <i class="bi bi-cpu-fill me-1"></i> Powered by OpenAI
+                </span>
+                <div class="navbar-nav">
+                    <a class="nav-link active" href="/">Home</a>
+                    <a class="nav-link" href="/statistics">Statistics</a>
+                    <a class="nav-link" href="/history">History</a>
+                    <a class="nav-link" href="/settings">Settings</a>
                 </div>
-                <nav class="nav-links">
-                    <a href="/" class="nav-link active">Home</a>
-                    <a href="/statistics" class="nav-link">Statistics</a>
-                    <a href="/settings" class="nav-link">Settings</a>
-                </nav>
+                <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="header-support-btn">
+                    <i class="bi bi-cup-hot-fill"></i>
+                    Support
+                </a>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <!-- Loading Indicator -->
-    <div id="loading-indicator" class="htmx-indicator">
-        <div class="spinner-container">
-            <div class="spinner"></div>
-        </div>
-    </div>
-
-    <main class="main">
-        <div class="container">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-shield-alt"></i>CTI Report Analyzer</h2>
-                    <p class="card-subtitle">Submit a URL to see CCI's AI-powered analysis and threat intelligence insights on the article.</p>
-                </div>
-                <div class="card-body">
-                    <form id="analyze-form" 
-                          hx-post="/analyze" 
-                          hx-target="#analysis-result-container"
-                          hx-swap="outerHTML"
-                          hx-indicator="#loading-indicator">
-                        <div class="form-group">
-                            <label for="url" class="form-label">Article URL</label>
-                            <div class="input-group">
-                                <input type="url" id="url" name="url" class="form-control" placeholder="https://example.com/article" required>
-                                <button type="submit" class="btn btn-primary" id="submit-btn">
-                                    <i class="fas fa-search"></i> Analyze Article
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="analysis-status" id="analysis-status" style="display: none;">
-                            <div class="status-content">
-                                <div class="status-icon">
-                                    <i class="fas fa-circle-notch fa-spin"></i>
-                                </div>
-                                <div class="status-message">
-                                    <h4>Analysis in Progress</h4>
-                                    <p id="status-text">Analyzing article content...</p>
+    <div id="main-content" class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Form Card -->
+                <div class="card mb-4 cyber-card">
+                    <div class="card-header">
+                        <h5 class="mb-0 submit-header"><i class="bi bi-shield-lock me-2"></i> Submit a URL to be Analyzed</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">Submit a URL to see CCI's AI-powered analysis and threat intelligence insights on the article.</p>
+                        
+                        <form id="analysis-form" hx-post="/analyze" hx-target="#analysis-container" hx-indicator="#loading-indicator">
+                            <div class="mb-3">
+                                <label for="url" class="form-label">Article URL</label>
+                                <div class="input-group">
+                                    <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com/article" required>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-search me-2"></i> Analyze Article
+                                    </button>
                                 </div>
                             </div>
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                        </div>
-
-                        <div class="model-selector">
-                            {% for model_id, model_info in available_models.items() %}
-                            <div class="model-option {% if model == model_id %}selected{% endif %}" 
-                                 hx-on:click="document.getElementById('model-{{ model_id }}').checked = true; 
-                                              document.querySelectorAll('.model-option').forEach(el => el.classList.remove('selected')); 
-                                              this.classList.add('selected');
-                                              console.log('Selected model: {{ model_id }}');">
-                                <input type="radio" name="model" id="model-{{ model_id }}" value="{{ model_id }}" {% if model == model_id %}checked{% endif %}>
-                                <label for="model-{{ model_id }}" class="model-label">
-                                    <div class="model-header">
-                                        <span class="model-name">{{ model_info.name }}</span>
+                            
+                            <!-- Model Selection -->
+                            <div class="mb-3">
+                                <label class="form-label mb-3">Select Model</label>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card h-100 model-option-card">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o-mini" value="gpt-4o-mini" checked>
+                                                    <label class="form-check-label fw-bold" for="model-gpt4o-mini">
+                                                        <i class="bi bi-cpu me-1"></i> GPT-4o mini
+                                                    </label>
+                                                    <p class="card-text mt-2">Best for: Quick analysis of news articles and blog posts</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="model-recommended">Best for: {{ model_info.recommended_for }}</div>
-                                </label>
+                                    <div class="col-md-4">
+                                        <div class="card h-100 model-option-card">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o" value="gpt-4o">
+                                                    <label class="form-check-label fw-bold" for="model-gpt4o">
+                                                        <i class="bi bi-cpu-fill me-1"></i> GPT-4o
+                                                    </label>
+                                                    <p class="card-text mt-2">Best for: Detailed analysis of technical reports and research papers</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100 model-option-card">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o-turbo" value="gpt-4o-2024-08-06">
+                                                    <label class="form-check-label fw-bold" for="model-gpt4o-turbo">
+                                                        <i class="bi bi-lightning-fill me-1"></i> GPT-4.5 Turbo
+                                                    </label>
+                                                    <p class="card-text mt-2">Best for: In-depth analysis of complex threat reports and intelligence briefs</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            {% endfor %}
-                        </div>
-                    </form>
-                    
-                    <div class="disclaimer-box">
-                        <div class="disclaimer-icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="disclaimer-content">
-                            <h3>Important Notice</h3>
-                            <p>This tool uses AI to analyze cybersecurity articles. Results may vary between analyses of the same content. While assessments are generally consistent, specific details, ratings, and identified techniques may differ.</p>
-                            <p class="disclaimer-emphasis">All analyses should be reviewed by a qualified analyst before making security decisions.</p>
+                        </form>
+                        
+                        <div class="alert alert-warning important-notice mt-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Important Notice</strong>
+                            </div>
+                            <p class="mb-0 mt-2">This tool uses AI to analyze cybersecurity articles. Results may vary between analyses of the same content. While assessments are generally consistent, specific details, ratings, and identified techniques may differ.</p>
+                            <p class="mb-0"><strong>All analyses should be reviewed by a qualified analyst before making security decisions.</strong></p>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="card recent-searches">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-history"></i> Recent Analyses</h2>
-                    <p class="card-subtitle">Previously analyzed articles</p>
-                    <button class="refresh-btn" 
-                            hx-get="/recent-analyses" 
-                            hx-target="#recent-analyses-list" 
-                            hx-swap="outerHTML"
-                            hx-indicator="#loading-indicator"
-                            title="Refresh list">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+                
+                <!-- Analysis container -->
+                <div id="analysis-container" class="mb-4">
+                    <!-- Analysis results will be loaded here -->
                 </div>
-                <div class="card-body">
-                    {% include "partials/recent_analyses.html" %}
+                
+                <!-- Loading indicator -->
+                <div id="loading-indicator" class="htmx-indicator">
+                    <!-- Loading animation will be shown here -->
+                </div>
+                
+                <!-- Refresh indicator for recent analyses -->
+                <div id="refresh-indicator" class="htmx-indicator position-absolute refresh-indicator">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Previously analyzed articles section -->
+                <div class="card mb-4 cyber-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 submit-header">Previously analyzed articles</h5>
+                        <button class="btn btn-sm btn-primary" 
+                                hx-get="/recent-analyses" 
+                                hx-target="#recent-analyses-container"
+                                hx-swap="innerHTML"
+                                hx-indicator="#refresh-indicator">
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                    <div class="card-body" id="recent-analyses-container">
+                        <div class="text-center py-4">
+                            <div class="spinner-border cyber-spinner text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading recent analyses...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analysis result container -->
+                <div id="analysis-result-container">
+                    <!-- Analysis results will be loaded here -->
                 </div>
             </div>
-
-            <!-- Analysis Result Container -->
-            <div id="analysis-result-container"></div>
         </div>
-    </main>
+    </div>
 
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-copyright">
-                    <p>&copy; 2025 <a href="https://www.centerforcyberintelligence.org" target="_blank">Center for Cyber Intelligence</a>. All Rights Reserved.</p>
-                </div>
-                <div class="footer-links">
-                    <a href="/">Home</a>
-                    <a href="/statistics">Statistics</a>
-                    <a href="/settings">Settings</a>
-                </div>
-            </div>
+    <div class="footer-links">
+        <div class="footer-nav">
+            <a href="/" class="active">Home</a>
+            <a href="/statistics">Statistics</a>
+            <a href="/history">History</a>
+            <a href="/settings">Settings</a>
         </div>
-    </footer>
+        <div class="footer-info">
+            <span class="copyright">© 2025 Center for Cyber Intelligence</span>
+            <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="bmc-button">
+                <i class="bi bi-cup-hot-fill"></i>
+                Support This Project
+            </a>
+        </div>
+    </div>
 
-    <!-- HTMX specific styles -->
-    <style>
-        .htmx-indicator {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-        }
-        
-        .htmx-request .htmx-indicator {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .spinner-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #3498db;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .refresh-btn {
-            background: none;
-            border: none;
-            color: #3498db;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-        
-        .refresh-btn:hover {
-            background-color: rgba(52, 152, 219, 0.1);
-        }
-    </style>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Add event listener to the form to log the selected model on submission
         document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('analyze-form');
-            form.addEventListener('submit', function(e) {
-                const selectedModel = document.querySelector('input[name="model"]:checked').value;
-                console.log('Form submitted with model:', selectedModel);
-            });
+            // Load recent analyses on page load
+            htmx.ajax('GET', '/recent-analyses', {target: '#recent-analyses-container'});
         });
     </script>
 </body>
