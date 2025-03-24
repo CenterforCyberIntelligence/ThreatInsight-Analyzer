@@ -1,5 +1,18 @@
 """
-Helper utility functions for the application.
+Helper Utilities Module
+======================
+
+This module provides general-purpose utility functions used throughout the application.
+These functions handle common tasks such as:
+- Formatting timestamps and durations
+- Parsing and manipulating URLs and domains
+- Generating slugs and sanitizing filenames
+- Formatting and displaying data (JSON, text truncation, etc.)
+- Calculating percentages and size reductions
+- Formatting currency values
+
+These utilities are designed to be simple, pure functions that don't rely on application state
+or external services, making them easily testable and reusable across the application.
 """
 import re
 from datetime import datetime
@@ -10,11 +23,14 @@ def format_timestamp(timestamp: Optional[Union[int, float]]) -> str:
     """
     Format a Unix timestamp to a human-readable date string.
     
+    Converts a numeric Unix timestamp (seconds since epoch) into a formatted
+    date string for display purposes. Handles None values gracefully.
+    
     Args:
         timestamp: Unix timestamp (seconds since epoch)
         
     Returns:
-        Formatted date string (e.g., 'Jan 01, 2023 12:34')
+        Formatted date string (e.g., 'Jan 01, 2023 12:34') or 'N/A' if invalid
     """
     try:
         if timestamp is None:
@@ -28,11 +44,15 @@ def format_seconds(seconds: Optional[Union[int, float]]) -> str:
     """
     Format seconds into a human-readable duration string.
     
+    Converts a numeric seconds value into a formatted duration string,
+    breaking it down into hours, minutes, and seconds as appropriate.
+    Handles None values and negative values gracefully.
+    
     Args:
         seconds: Number of seconds
         
     Returns:
-        Formatted duration string (e.g., '1 hour 30 minutes 45 seconds')
+        Formatted duration string (e.g., '1 hour 30 minutes 45 seconds') or 'N/A' if invalid
     """
     try:
         if seconds is None:
@@ -61,11 +81,15 @@ def parse_domain_from_url(url: Optional[str]) -> str:
     """
     Extract the domain from a URL.
     
+    Parses a URL string to extract just the domain name, handling various
+    URL formats, protocols, subdomains, and country-specific TLDs appropriately.
+    
     Args:
-        url: URL string
+        url: URL string (e.g., 'https://www.example.com/page?query=value')
         
     Returns:
         Domain name (e.g., 'example.com' from 'https://www.example.com/page')
+        or empty string if URL is invalid
     """
     if not url:
         return ""
@@ -93,11 +117,14 @@ def generate_slug(text: Optional[str]) -> str:
     """
     Generate a URL-friendly slug from text.
     
+    Converts a text string into a URL-friendly slug by removing special characters,
+    converting to lowercase, and replacing spaces with hyphens.
+    
     Args:
-        text: Input text
+        text: Input text to convert to a slug
         
     Returns:
-        URL-friendly slug
+        URL-friendly slug or empty string if input is invalid
     """
     if not text:
         return ""
@@ -120,11 +147,14 @@ def sanitize_filename(filename: Optional[str]) -> str:
     """
     Sanitize a string to be used as a filename.
     
+    Removes invalid filename characters and replaces spaces with underscores
+    to create a valid filename for any filesystem.
+    
     Args:
-        filename: Input filename
+        filename: Input filename to sanitize
         
     Returns:
-        Sanitized filename
+        Sanitized filename or empty string if input is invalid
     """
     if not filename:
         return ""
@@ -144,11 +174,14 @@ def format_json_for_display(data: Any) -> str:
     """
     Format JSON data for display.
     
+    Pretty-prints JSON data with proper indentation for display purposes.
+    Handles both JSON strings and Python data structures that can be serialized to JSON.
+    
     Args:
         data: JSON data (dict, list, or JSON string)
         
     Returns:
-        Formatted JSON string
+        Formatted JSON string with proper indentation
     """
     try:
         # If data is a string, try to parse it as JSON
@@ -168,13 +201,16 @@ def truncate_text(text: Optional[str], max_length: int, ellipsis: str = "...") -
     """
     Truncate text to a maximum length, adding ellipsis if needed.
     
+    Ensures text doesn't exceed a specified maximum length by cutting it off
+    and adding an ellipsis if necessary.
+    
     Args:
-        text: Input text
-        max_length: Maximum length
-        ellipsis: Ellipsis string
+        text: Input text to truncate
+        max_length: Maximum allowed length of the result including ellipsis
+        ellipsis: String to append to truncated text (default: "...")
         
     Returns:
-        Truncated text
+        Truncated text with ellipsis if needed, or the original text if short enough
     """
     if not text:
         return ""
@@ -188,11 +224,14 @@ def calculate_percentages(data: Optional[Dict[str, Union[int, float]]]) -> Dict[
     """
     Calculate percentages for a dictionary of values.
     
+    Converts a dictionary of numeric values into a dictionary of percentage values
+    based on the sum of all values. Handles negative values by filtering them out.
+    
     Args:
-        data: Dictionary of values
+        data: Dictionary of values to convert to percentages
         
     Returns:
-        Dictionary of percentages
+        Dictionary with the same keys but values converted to percentages (0-100)
     """
     if not data:
         return {}
@@ -214,12 +253,15 @@ def calculate_size_reduction(original_size: Optional[Union[int, float]],
     """
     Calculate percentage reduction in size.
     
+    Determines how much smaller a new size is compared to an original size,
+    expressed as a percentage reduction. Handles edge cases like zero or negative values.
+    
     Args:
-        original_size: Original size
-        new_size: New size
+        original_size: Original size value
+        new_size: New (reduced) size value
         
     Returns:
-        Percentage reduction
+        Percentage reduction (0-100) or 0 if calculation is invalid
     """
     try:
         if original_size is None or new_size is None:
@@ -243,12 +285,15 @@ def format_currency(amount: Optional[Union[int, float]], currency_symbol: str = 
     """
     Format a number as currency.
     
+    Formats a numeric value as a currency string with proper thousands separators
+    and decimal places. Handles None values and negative amounts.
+    
     Args:
-        amount: Amount
-        currency_symbol: Currency symbol
+        amount: Amount to format
+        currency_symbol: Currency symbol to prepend (default: "$")
         
     Returns:
-        Formatted currency string
+        Formatted currency string (e.g., "$1,234.56")
     """
     try:
         if amount is None:

@@ -1,5 +1,19 @@
 """
-Utility functions for exporting analysis data in different formats.
+Export Utilities Module
+======================
+
+This module provides functionality for exporting threat intelligence analysis results
+in various file formats for sharing and storage purposes. It supports exporting data as:
+
+- JSON: Raw structured data for machine processing or archiving
+- CSV: Tabular data for spreadsheet applications
+- Markdown: Human-readable formatted reports
+- PDF: Publication-quality documents (placeholder functionality)
+
+The export utilities handle proper formatting, filename generation with timestamps,
+and organization of the analysis data for optimal presentation in each format.
+These functions are used primarily by the report generation and download features
+in the application's user interface.
 """
 import os
 import json
@@ -13,12 +27,17 @@ def get_export_filename(domain: Optional[str], format_type: str) -> str:
     """
     Generate a filename for exported analysis.
     
+    Creates a sanitized filename incorporating the domain (if available), 
+    current timestamp, and appropriate file extension based on the format type.
+    The function ensures the filename is safe for all filesystems and not too long.
+    
     Args:
-        domain: Domain name from analyzed URL
-        format_type: Export format (json, csv, pdf, markdown)
+        domain: Domain name from analyzed URL (e.g., 'example.com')
+        format_type: Export format ('json', 'csv', 'pdf', or 'markdown')
         
     Returns:
-        Sanitized filename with timestamp
+        Sanitized filename with timestamp and appropriate extension
+        (e.g., 'example_com_20230101_123045.json')
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     
@@ -54,13 +73,20 @@ def export_analysis_as_json(
     """
     Export analysis data as JSON.
     
+    Saves the complete analysis data dictionary to a JSON file with proper
+    indentation and Unicode support. This format preserves all the original
+    data structure and is suitable for programmatic access or archiving.
+    
     Args:
-        analysis_data: Analysis data dictionary
-        domain: Domain name from analyzed URL
-        file_path: Optional file path for export
+        analysis_data: Analysis data dictionary containing the complete analysis results
+        domain: Domain name from analyzed URL (for filename generation if file_path not provided)
+        file_path: Optional file path for export (if not provided, generates a temporary file)
         
     Returns:
-        Dictionary with status and file path
+        Dictionary with status information:
+        - success: Boolean indicating if export was successful
+        - file_path: Path to the exported file (if successful)
+        - message: Human-readable status message
     """
     try:
         # Generate filename if not provided
@@ -91,13 +117,20 @@ def export_analysis_as_csv(
     """
     Export analysis data as CSV.
     
+    Converts the hierarchical analysis data into a two-column CSV format
+    with section headers and related data. This format is suitable for
+    importing into spreadsheet applications and basic data analysis.
+    
     Args:
-        analysis_data: Analysis data dictionary
-        domain: Domain name from analyzed URL
-        file_path: Optional file path for export
+        analysis_data: Analysis data dictionary containing the complete analysis results
+        domain: Domain name from analyzed URL (for filename generation if file_path not provided)
+        file_path: Optional file path for export (if not provided, generates a temporary file)
         
     Returns:
-        Dictionary with status and file path
+        Dictionary with status information:
+        - success: Boolean indicating if export was successful
+        - file_path: Path to the exported file (if successful)
+        - message: Human-readable status message
     """
     try:
         # Generate filename if not provided
@@ -255,13 +288,21 @@ def export_analysis_as_markdown(
     """
     Export analysis data as Markdown.
     
+    Converts the analysis data into a well-formatted Markdown document with
+    proper headings, lists, tables, and formatting. This format is suitable
+    for sharing reports that can be easily viewed in a variety of platforms
+    and converted to other formats.
+    
     Args:
-        analysis_data: Analysis data dictionary
-        domain: Domain name from analyzed URL
-        file_path: Optional file path for export
+        analysis_data: Analysis data dictionary containing the complete analysis results
+        domain: Domain name from analyzed URL (for filename generation if file_path not provided)
+        file_path: Optional file path for export (if not provided, generates a temporary file)
         
     Returns:
-        Dictionary with status and file path
+        Dictionary with status information:
+        - success: Boolean indicating if export was successful
+        - file_path: Path to the exported file (if successful)
+        - message: Human-readable status message
     """
     try:
         # Generate filename if not provided
@@ -461,13 +502,20 @@ def export_analysis_as_pdf(
     """
     Export analysis data as PDF.
     
+    Creates a PDF document from the analysis data, suitable for formal reporting
+    and professional presentation. Currently implemented as a placeholder that
+    creates a text file instead of a proper PDF.
+    
     Args:
-        analysis_data: Analysis data dictionary
-        domain: Domain name from analyzed URL
-        file_path: Optional file path for export
+        analysis_data: Analysis data dictionary containing the complete analysis results
+        domain: Domain name from analyzed URL (for filename generation if file_path not provided)
+        file_path: Optional file path for export (if not provided, generates a temporary file)
         
     Returns:
-        Dictionary with status and file path
+        Dictionary with status information:
+        - success: Boolean indicating if export was successful
+        - file_path: Path to the exported file (if successful)
+        - message: Human-readable status message
     """
     try:
         # Generate filename if not provided
@@ -501,11 +549,14 @@ def export_analysis_as_pdf(
 def generate_pdf(markdown_path: str, output_path: str) -> bool:
     """
     Generate a PDF from markdown content.
-    This is a placeholder function that would use a library like weasyprint or reportlab.
+    
+    This is a placeholder function that would use a library like weasyprint or reportlab
+    to convert markdown content to a formatted PDF. Currently, it simply creates a text
+    file with a placeholder message and the original markdown content.
     
     Args:
-        markdown_path: Path to markdown file
-        output_path: Output PDF path
+        markdown_path: Path to markdown file to convert
+        output_path: Output PDF file path
         
     Returns:
         True if PDF was generated successfully, False otherwise

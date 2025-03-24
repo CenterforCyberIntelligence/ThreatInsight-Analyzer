@@ -1,3 +1,20 @@
+"""
+Logging Utilities Module
+=======================
+
+This module provides a centralized logging system for the application with the following features:
+- Multiple log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Log file rotation to prevent excessive disk usage
+- Separate log files for different log levels (info, error, debug)
+- Colored console output for easier monitoring during development
+- Structured logging capabilities for machine-readable log entries
+- Performance monitoring for application startup phases
+- Environment-aware logging configuration
+- Helper functions for common logging patterns
+
+The logging system is designed to be used throughout the application to provide 
+consistent logging behavior and facilitate troubleshooting in development and production.
+"""
 import os
 import sys
 import logging
@@ -79,6 +96,12 @@ if not _is_reloader_process:
 
     # Create a custom formatter for the console (with colors)
     class ColoredFormatter(logging.Formatter):
+        """
+        Custom log formatter that adds color codes to log level names in console output.
+        
+        This makes it easier to visually distinguish between different log levels when
+        viewing logs in the console during development.
+        """
         COLORS = {
             'DEBUG': '\033[94m',  # Blue
             'INFO': '\033[94m',   # Blue
@@ -89,6 +112,15 @@ if not _is_reloader_process:
         RESET = '\033[0m'
         
         def format(self, record):
+            """
+            Format a log record with color codes for the console.
+            
+            Args:
+                record: Log record to format
+                
+            Returns:
+                Formatted log message with color codes
+            """
             log_message = super().format(record)
             color = self.COLORS.get(record.levelname, self.RESET)
             return f"{color}{log_message}{self.RESET}"
@@ -109,8 +141,12 @@ def start_phase(phase_name: str) -> None:
     """
     Start timing a startup phase.
     
+    This function marks the beginning of a specific application startup phase
+    and logs its start. It's used to track performance metrics during application
+    initialization.
+    
     Args:
-        phase_name: Name of the startup phase
+        phase_name: Name of the startup phase to begin timing
     """
     global _startup_current_phase, _startup_phase_start_times
     
@@ -129,8 +165,12 @@ def end_phase(phase_name: str = None) -> None:
     """
     End timing a startup phase and record the duration.
     
+    This function marks the end of a specific application startup phase,
+    calculates its duration, and logs the completion. It's used together
+    with start_phase() to measure initialization performance.
+    
     Args:
-        phase_name: Name of the startup phase (defaults to current)
+        phase_name: Name of the startup phase to end (defaults to the current phase)
     """
     global _startup_current_phase, _startup_phases, _startup_phase_start_times
     
@@ -149,17 +189,29 @@ def end_phase(phase_name: str = None) -> None:
         logger.warning(f"Attempted to end unknown phase: {phase_name}")
 
 def get_startup_timings() -> Dict[str, float]:
-    """Get the timing information for all startup phases."""
+    """
+    Get the timing information for all startup phases.
+    
+    Retrieves the duration of all completed application startup phases.
+    This can be used to analyze performance bottlenecks during initialization.
+    
+    Returns:
+        Dictionary mapping phase names to their durations in seconds
+    """
     return _startup_phases
 
 def structured_log(level: str, message: str, **kwargs) -> None:
     """
     Create structured log entry with additional context.
     
+    This function creates a JSON-formatted log entry that includes the message
+    and any additional context data provided. This is useful for machine-readable
+    logs that can be parsed and analyzed by log management systems.
+    
     Args:
-        level: Log level (debug, info, warning, error, critical)
+        level: Log level ('debug', 'info', 'warning', 'error', 'critical')
         message: Main log message
-        **kwargs: Additional context to include in structured log
+        **kwargs: Additional context data to include in the structured log
     """
     # Add timestamp
     context = {
@@ -187,9 +239,13 @@ def print_status(message: str, is_error: bool = False) -> None:
     """
     Log status messages with timestamps.
     
+    A convenience function for logging status messages during application operations,
+    automatically choosing the appropriate log level based on whether the message
+    represents an error condition.
+    
     Args:
         message: The message to log
-        is_error: Whether this is an error message
+        is_error: Whether this is an error message (determines log level)
     """
     if is_error:
         logger.error(message)
@@ -198,35 +254,80 @@ def print_status(message: str, is_error: bool = False) -> None:
 
 # Add dedicated functions for different log levels
 def debug(message: str, **kwargs) -> None:
-    """Log a debug message."""
+    """
+    Log a debug message.
+    
+    Logs a message at DEBUG level, optionally with structured context data.
+    Debug messages are typically used for detailed troubleshooting information.
+    
+    Args:
+        message: The debug message to log
+        **kwargs: Optional context data for structured logging
+    """
     if kwargs:
         structured_log('debug', message, **kwargs)
     else:
         logger.debug(message)
 
 def info(message: str, **kwargs) -> None:
-    """Log an info message."""
+    """
+    Log an info message.
+    
+    Logs a message at INFO level, optionally with structured context data.
+    Info messages are typically used for general operational information.
+    
+    Args:
+        message: The info message to log
+        **kwargs: Optional context data for structured logging
+    """
     if kwargs:
         structured_log('info', message, **kwargs)
     else:
         logger.info(message)
 
 def warning(message: str, **kwargs) -> None:
-    """Log a warning message."""
+    """
+    Log a warning message.
+    
+    Logs a message at WARNING level, optionally with structured context data.
+    Warning messages indicate potential issues that don't prevent operation.
+    
+    Args:
+        message: The warning message to log
+        **kwargs: Optional context data for structured logging
+    """
     if kwargs:
         structured_log('warning', message, **kwargs)
     else:
         logger.warning(message)
 
 def error(message: str, **kwargs) -> None:
-    """Log an error message."""
+    """
+    Log an error message.
+    
+    Logs a message at ERROR level, optionally with structured context data.
+    Error messages indicate issues that prevent normal operation.
+    
+    Args:
+        message: The error message to log
+        **kwargs: Optional context data for structured logging
+    """
     if kwargs:
         structured_log('error', message, **kwargs)
     else:
         logger.error(message)
 
 def critical(message: str, **kwargs) -> None:
-    """Log a critical message."""
+    """
+    Log a critical message.
+    
+    Logs a message at CRITICAL level, optionally with structured context data.
+    Critical messages indicate severe errors that may cause application failure.
+    
+    Args:
+        message: The critical message to log
+        **kwargs: Optional context data for structured logging
+    """
     if kwargs:
         structured_log('critical', message, **kwargs)
     else:
@@ -236,8 +337,12 @@ def log_config_summary(config: Dict[str, Any]) -> None:
     """
     Log a sanitized summary of the configuration.
     
+    This function logs the application configuration while automatically hiding
+    sensitive information like API keys and passwords. It's typically called
+    during application startup to record the current configuration.
+    
     Args:
-        config: Dictionary of configuration values
+        config: Dictionary of configuration values to log
     """
     # Make a copy of the config to avoid modifying the original
     safe_config = config.copy()
@@ -257,7 +362,11 @@ _shutdown_handler_registered = False
 def register_shutdown_handler(app, callback: Callable) -> None:
     """
     Register a function to be called when the application shuts down.
-    Uses a global flag to prevent duplicate registrations.
+    
+    This function sets up signal handlers to ensure a callback function is
+    executed when the application shuts down, regardless of how the shutdown
+    is triggered (normal exit, SIGTERM, SIGINT/Ctrl+C). It ensures the handler
+    is only registered once.
     
     Args:
         app: Flask application instance
@@ -303,15 +412,19 @@ def setup_logging(
     """
     Set up a logger with file and console handlers.
     
+    This utility function creates and configures a logger with both file and
+    console output. It's primarily used for unit tests and isolated components
+    that need their own logging configuration.
+    
     Args:
-        logger_name: Name of the logger
-        log_file: Path to log file
+        logger_name: Name of the logger to create
+        log_file: Path to the log file to write to
         level: Log level (defaults to INFO or environment variable LOG_LEVEL)
         max_bytes: Maximum log file size before rotation
         backup_count: Number of backup files to keep
         
     Returns:
-        Configured logger instance
+        Configured logger instance ready for use
     """
     # Create logger
     custom_logger = logging.getLogger(logger_name)
@@ -356,11 +469,15 @@ def get_logger(module_name: str) -> logging.Logger:
     """
     Get a logger for a module.
     
+    This is a convenience function that returns a logger with a standardized
+    name format for a specific module. It ensures consistent logger naming
+    across the application.
+    
     Args:
-        module_name: Name of the module
+        module_name: Name of the module requesting a logger
         
     Returns:
-        Logger instance
+        Logger instance specific to the requesting module
     """
     logger_name = f"app.{module_name}"
     return logging.getLogger(logger_name)
@@ -369,8 +486,12 @@ def log_request(req: Request) -> None:
     """
     Log an incoming HTTP request.
     
+    This function logs information about an HTTP request, including the
+    method, path, client IP address, and user agent. It's typically used
+    in request middleware or route handlers.
+    
     Args:
-        req: Flask request object
+        req: Flask request object to log
     """
     req_logger = get_logger('requests')
     req_logger.info(
@@ -383,8 +504,12 @@ def log_exception(exception: Exception, module: str) -> None:
     """
     Log an exception with traceback.
     
+    This function logs an exception with its full traceback information,
+    making it easier to diagnose and fix errors. It's typically used in
+    exception handlers throughout the application.
+    
     Args:
-        exception: Exception object
+        exception: Exception object to log
         module: Module name where the exception occurred
     """
     exc_logger = get_logger(module)

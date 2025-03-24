@@ -1,3 +1,22 @@
+"""
+Article Extractor Module
+=======================
+
+This module is responsible for extracting the textual content from web articles given their URLs.
+It provides robust extraction capabilities using multiple methods and fallback strategies to
+ensure reliable content retrieval even from complex web pages with diverse layouts.
+
+Key features:
+- Multi-method content extraction (container-based, paragraph-based, and text density analysis)
+- Domain-specific request headers to handle sites with anti-scraping measures
+- Error handling and fallback mechanisms
+- Detailed logging for troubleshooting extraction issues
+- Content cleaning and normalization to remove noise
+
+This module is primarily used by the article analysis pipeline to obtain the text content
+that will be analyzed by the OpenAI API for threat intelligence insights.
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -12,9 +31,13 @@ def extract_article_content(url: str, verbose: bool = True) -> Optional[str]:
     """
     Extract article content using multiple methods and combine the best results.
     
+    This function attempts to extract the main content of an article from a given URL
+    using several different extraction techniques. It handles errors gracefully and
+    provides detailed logging of the extraction process.
+    
     Args:
         url: The URL to extract content from
-        verbose: Whether to print status messages
+        verbose: Whether to print status messages during extraction
         
     Returns:
         Extracted article text or None if extraction failed
@@ -151,7 +174,19 @@ def extract_article_content(url: str, verbose: bool = True) -> Optional[str]:
         return None
 
 def get_domain_specific_headers(domain: str) -> Dict[str, str]:
-    """Get headers customized for specific domains to improve extraction."""
+    """
+    Get headers customized for specific domains to improve extraction.
+    
+    Some websites require specific User-Agent strings or other headers to allow
+    access to their content. This function provides domain-specific headers to 
+    bypass simple anti-scraping measures.
+    
+    Args:
+        domain: The domain name (e.g., 'www.example.com')
+        
+    Returns:
+        Dictionary of HTTP headers appropriate for the domain
+    """
     # Default headers
     default_headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -175,7 +210,19 @@ def get_domain_specific_headers(domain: str) -> Dict[str, str]:
     return domain_specific.get(domain, default_headers)
 
 def extract_by_containers(soup: BeautifulSoup, verbose: bool = True) -> Optional[str]:
-    """Extract content using common article container selectors."""
+    """
+    Extract content using common article container selectors.
+    
+    This method looks for common HTML elements and CSS classes that typically
+    contain the main article content across various websites.
+    
+    Args:
+        soup: BeautifulSoup object of the parsed HTML
+        verbose: Whether to print status messages
+        
+    Returns:
+        Extracted text or None if no suitable container was found
+    """
     debug("Extracting content using container selectors")
     
     # Remove unwanted elements
@@ -200,7 +247,20 @@ def extract_by_containers(soup: BeautifulSoup, verbose: bool = True) -> Optional
     return None
 
 def extract_by_paragraphs(soup: BeautifulSoup, verbose: bool = True) -> Optional[str]:
-    """Extract content by finding and combining all paragraphs."""
+    """
+    Extract content by finding and combining all paragraphs.
+    
+    This method collects all paragraph (<p>) elements from the HTML and
+    combines them, filtering out short ones that are likely UI elements
+    rather than actual content.
+    
+    Args:
+        soup: BeautifulSoup object of the parsed HTML
+        verbose: Whether to print status messages
+        
+    Returns:
+        Extracted text or None if no suitable paragraphs were found
+    """
     debug("Extracting content using paragraph elements")
     
     # Find all paragraphs that are likely part of the article
@@ -220,7 +280,20 @@ def extract_by_paragraphs(soup: BeautifulSoup, verbose: bool = True) -> Optional
     return clean_extracted_text(text)
 
 def extract_by_text_density(soup: BeautifulSoup, verbose: bool = True) -> Optional[str]:
-    """Extract content by finding areas with high text density."""
+    """
+    Extract content by finding areas with high text density.
+    
+    This method analyzes the HTML structure to find the div elements with the
+    highest ratio of text content to HTML markup, which typically indicates
+    the main content area of an article.
+    
+    Args:
+        soup: BeautifulSoup object of the parsed HTML
+        verbose: Whether to print status messages
+        
+    Returns:
+        Extracted text or None if no high-density content was found
+    """
     debug("Extracting content using text density analysis")
     
     # Remove noise elements
@@ -262,7 +335,18 @@ def extract_by_text_density(soup: BeautifulSoup, verbose: bool = True) -> Option
     return clean_extracted_text(text)
 
 def clean_extracted_text(text: str) -> str:
-    """Clean up extracted text."""
+    """
+    Clean up extracted text.
+    
+    This function removes excessive whitespace, common noise phrases, and 
+    other unwanted elements from the extracted text.
+    
+    Args:
+        text: The raw extracted text to clean
+        
+    Returns:
+        Cleaned text ready for analysis
+    """
     # Handle None input
     if text is None:
         return ""

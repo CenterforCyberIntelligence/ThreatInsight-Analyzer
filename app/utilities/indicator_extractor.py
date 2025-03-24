@@ -1,7 +1,21 @@
 """
 Indicator Extractor Module
-Handles the extraction of indicators of compromise, CVEs, and MITRE ATT&CK techniques from article content.
-Uses regular expressions to identify and extract various types of data.
+==========================
+
+This module specializes in extracting cybersecurity indicators of compromise (IOCs) from article content.
+It uses regular expressions and validation rules to identify and extract various types of indicators,
+including IP addresses, domains, URLs, file hashes, email addresses, CVEs, and MITRE ATT&CK techniques.
+
+Key features:
+- Comprehensive regular expression patterns for different indicator types
+- Validation and filtering to reduce false positives
+- Support for multiple indicator formats (IPv4, IPv6, MD5, SHA1, SHA256, etc.)
+- Exclusion of common false positives and self-references
+- Formatting of extracted indicators for display in the UI
+
+This module plays a critical role in the threat intelligence analysis process by automatically
+identifying actionable technical indicators that security teams can use for threat hunting
+and defensive measures.
 """
 
 import re
@@ -85,12 +99,17 @@ def extract_indicators(content: str, url: str = None) -> Dict[str, List[str]]:
     """
     Extract indicators of compromise, CVEs, and MITRE ATT&CK techniques from article content.
     
+    This function scans the provided text content to identify and extract various types of
+    cybersecurity indicators, filtering out common false positives and the source URL itself.
+    It uses regex patterns defined in REGEX_PATTERNS to match different indicator types.
+    
     Args:
         content: The article text to analyze
         url: The source URL (to exclude from the results to avoid self-references)
         
     Returns:
-        Dictionary of extracted indicators by type
+        Dictionary of extracted indicators by type, with each type mapped to a list of
+        unique indicator values
     """
     debug("Starting extraction of indicators from article content")
     
@@ -192,11 +211,15 @@ def validate_and_clean_indicators(indicators: Dict[str, List[str]]) -> Dict[str,
     """
     Apply additional validation and cleaning to extracted indicators.
     
+    This function performs further validation and standardization of extracted indicators
+    to ensure they meet format requirements and filter out additional false positives
+    that weren't caught in the initial extraction.
+    
     Args:
         indicators: Dictionary of extracted indicators by type
         
     Returns:
-        Cleaned dictionary of indicators
+        Cleaned dictionary of indicators with standardized formats
     """
     clean_indicators = {}
     
@@ -228,11 +251,15 @@ def format_indicators_for_display(indicators: Dict[str, List[str]]) -> Dict[str,
     """
     Format extracted indicators for display in the UI.
     
+    This function organizes the extracted indicators into categories for better presentation
+    in the user interface, adding counts and grouping related indicator types together.
+    
     Args:
         indicators: Dictionary of extracted indicators by type
         
     Returns:
-        Formatted dictionary with category grouping and counts
+        Formatted dictionary with category grouping, indicator values, and counts
+        suitable for display in the UI
     """
     formatted = {
         "categories": [
