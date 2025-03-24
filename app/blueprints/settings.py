@@ -174,6 +174,6 @@ def restart():
         threading.Thread(target=restart_server).start()
         return jsonify({"success": True, "message": "Server is restarting..."})
     except Exception as e:
-        logging.error(f"Error restarting server: {str(e)}")
-        return jsonify({"success": False, "message": "An internal error has occurred while restarting the server."})
+        logging.error("Error restarting server", exc_info=True)
+        return jsonify({"success": False, "message": "An internal error has occurred. Please try again later."})
         main
