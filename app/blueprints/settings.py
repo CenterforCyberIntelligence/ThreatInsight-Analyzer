@@ -11,6 +11,7 @@ from typing import Dict, Any
 from app.config.config import Config
 from app.models.database import get_token_usage_stats
 from dotenv import load_dotenv
+import logging
 
 settings_bp = Blueprint('settings', __name__)
 
@@ -128,7 +129,8 @@ def update_env():
         
         return jsonify({"success": True, "message": "Environment variables updated successfully"})
     except Exception as e:
-        return jsonify({"success": False, "message": f"Error updating environment variables: {str(e)}"})
+        logging.error(f"Error updating environment variables: {str(e)}")
+        return jsonify({"success": False, "message": "An internal error has occurred while updating environment variables."})
 
 @settings_bp.route('/settings/purge_database', methods=['POST'])
 def purge_database():
@@ -160,7 +162,8 @@ def purge_database():
         
         return jsonify({"success": True, "message": "Database purged successfully"})
     except Exception as e:
-        return jsonify({"success": False, "message": f"Error purging database: {str(e)}"})
+        logging.error(f"Error purging database: {str(e)}")
+        return jsonify({"success": False, "message": "An internal error has occurred while purging the database."})
 
 @settings_bp.route('/settings/restart', methods=['POST'])
 def restart():
@@ -169,4 +172,5 @@ def restart():
         threading.Thread(target=restart_server).start()
         return jsonify({"success": True, "message": "Server is restarting..."})
     except Exception as e:
-        return jsonify({"success": False, "message": f"Error restarting server: {str(e)}"}) 
+        logging.error(f"Error restarting server: {str(e)}")
+        return jsonify({"success": False, "message": "An internal error has occurred while restarting the server."})
