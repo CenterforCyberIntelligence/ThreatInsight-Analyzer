@@ -129,8 +129,8 @@ def update_env():
         
         return jsonify({"success": True, "message": "Environment variables updated successfully"})
     except Exception as e:
-        logging.error("Error updating environment variables", exc_info=True)
-        return jsonify({"success": False, "message": "An internal error has occurred. Please try again later."})
+        logging.error(f"Error updating environment variables: {str(e)}")
+        return jsonify({"success": False, "message": "An internal error has occurred while updating environment variables."})
         main
 
 @settings_bp.route('/settings/purge_database', methods=['POST'])
