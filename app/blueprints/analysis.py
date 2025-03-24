@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, render_template, send_file, abort
+from flask import Blueprint, request, jsonify, render_template, send_file, abort, Response, current_app
 import time
 import os
 import re
@@ -7,6 +7,7 @@ import validators
 import html
 from typing import Dict, Any, Optional, Tuple, List
 from urllib.parse import urlparse
+from datetime import datetime
 
 from app.utilities.article_extractor import extract_article_content
 from app.utilities.article_analyzer import analyze_article, parse_analysis_response
@@ -28,12 +29,30 @@ ALLOWED_TLDS = [
     'br', 'mx', 'za', 'ch', 'se', 'no', 'dk', 'fi', 'nl', 'be'
 ]
 
-# List of blocked domains (e.g., known malicious sites)
-BLOCKED_DOMAINS = [
-    'example-malicious-site.com',
-    'known-phishing-domain.net'
-    # Add more as needed
-]
+def load_blocked_domains():
+    """
+    Load blocked domains from a text file
+    
+    Returns:
+        List of blocked domain strings
+    """
+    domains = []
+    try:
+        blocked_domains_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'blocked_domains.txt')
+        with open(blocked_domains_path, 'r') as f:
+            for line in f:
+                # Skip empty lines and comments
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    domains.append(line)
+        return domains
+    except Exception as e:
+        # Log the error but don't crash - return a default minimal list if file can't be read
+        warning(f"Error loading blocked domains: {str(e)}")
+        return ['example-malicious-site.com', 'known-phishing-domain.net']
+
+# Load blocked domains from file
+BLOCKED_DOMAINS = load_blocked_domains()
 
 def validate_url(url: str) -> Tuple[bool, Optional[str]]:
     """
@@ -67,16 +86,36 @@ def validate_url(url: str) -> Tuple[bool, Optional[str]]:
     # Extract domain and TLD
     domain = parsed_url.netloc.lower()
     
-    # Check for blocked domains
-    if any(blocked in domain for blocked in BLOCKED_DOMAINS):
-        return False, "This domain is not allowed"
+    # Remove port number if present
+    if ':' in domain:
+        domain = domain.split(':')[0]
     
-    # TLD validation
-    domain_parts = domain.split('.')
-    if len(domain_parts) >= 2:
+    # Block IP addresses in domain names (including disguised ones)
+    ip_pattern = re.compile(r'\d{1,3}[.-]\d{1,3}[.-]\d{1,3}[.-]\d{1,3}')
+    if ip_pattern.search(domain) or 'ip-' in domain:
+        return False, "IP addresses in domain names are not allowed"
+    
+    # Check for blocked domains - exact match or subdomain
+    for blocked in BLOCKED_DOMAINS:
+        if domain == blocked or domain.endswith('.' + blocked):
+            return False, "This domain is blocked"
+    
+    # TLD validation - extract the actual TLD more accurately
+    try:
+        # Split by periods and get the last part for TLD check
+        domain_parts = domain.split('.')
         tld = domain_parts[-1]
+        
+        # Handle cases with complex TLDs (e.g., co.uk)
+        if len(domain_parts) >= 3 and domain_parts[-2] + '.' + domain_parts[-1] in ['co.uk', 'com.au', 'co.jp']:
+            tld = domain_parts[-2] + '.' + domain_parts[-1]
+        
+        # Check if TLD is in allowed list
         if tld not in ALLOWED_TLDS:
             return False, f"Domain TLD '.{tld}' is not in the allowed list"
+    except Exception as e:
+        warning(f"Error in TLD validation: {str(e)}")
+        return False, "Invalid domain format"
     
     return True, None
 
@@ -208,6 +247,8 @@ def analysis_result():
                               analysis=existing_analysis['raw_text'],
                               structured_analysis=existing_analysis['structured_data'],
                               content_length=existing_analysis['content_length'],
+                              extraction_time=existing_analysis.get('extraction_time', 0),
+                              analysis_time=existing_analysis.get('analysis_time', 0),
                               api_details=cached_api_details,
                               cached=True,
                               analyzed_at=analyzed_at)
@@ -244,48 +285,45 @@ def analysis_result():
                                   url=url,
                                   model=model), 500
         
-        # Process and validate analysis results
-        if not isinstance(analysis_result, dict) or "structured" not in analysis_result:
-            print_status(f"Web request: Invalid response format from model {model}", is_error=True)
-            return render_template('partials/analysis_error.html',
-                                  error='Analysis failed to produce valid results. The response structure was unexpected.',
-                                  error_type='openai_api',
-                                  error_title='Invalid Response Format',
-                                  url=url,
-                                  model=model), 500
+        # Get indicators from the result or extract them if missing
+        indicators = None
+        if "extracted_indicators" in analysis_result and analysis_result["extracted_indicators"]:
+            indicators = format_indicators_for_display(analysis_result["extracted_indicators"])
+            print_status(f"Web request: {indicators['total_count']} indicators extracted from article")
         
-        # Get API details if available
-        api_details = analysis_result.get("api_details", None)
-        
-        # Verify the model in the API details matches what was requested
-        if api_details and api_details.get("request", {}).get("model") != model:
-            print_status(f"WARNING: Requested model {model} doesn't match API request model {api_details.get('request', {}).get('model')}", is_error=True)
-
-        # Store analysis in database
-        store_result = store_analysis(
+        # Store analysis in database for future retrieval
+        store_analysis(
             url=url,
-            title=url.split('/')[-1] if '/' in url else url,  # Basic title from URL (will improve in future)
-            content_length=len(article_content),
-            extraction_time=extraction_time,
-            analysis_time=analysis_time,
+            title=url,  # Using URL as title since we don't have a better title available here
             model=model,
             raw_analysis=analysis_result["text"],
-            structured_analysis=analysis_result["structured"]
+            structured_analysis=analysis_result["structured"],
+            content_length=len(article_content),
+            extraction_time=extraction_time,
+            analysis_time=analysis_time
         )
         
-        if not store_result:
-            print_status(f"Web request: Failed to store analysis in database", is_error=True)
-            warning(f"Failed to store analysis for URL: {url}")
-            # Continue anyway - the user will still see the result but it won't be cached
-
-        # Return the analysis result
-        print_status(f"Web request: Analysis complete, rendering template")
+        # Prepare API details for template
+        api_details = analysis_result.get("api_details", None)
+        
+        # Log detailed information about what we're sending to the template
+        import json
+        info("=========== ANALYSIS DATA SENT TO TEMPLATE ===========")
+        info(f"Raw analysis text type: {type(analysis_result['text'])}")
+        info(f"Raw analysis text length: {len(analysis_result['text'])}")
+        info(f"Raw analysis text sample: {analysis_result['text'][:500]}...")
+        info(f"Structured data keys: {list(analysis_result['structured'].keys())}")
+        info("=========== END ANALYSIS DATA DETAILS ===========")
+        
+        # Return the analysis result template
         return render_template('partials/analysis_result.html',
                               url=url,
                               model=model,
                               analysis=analysis_result["text"],
                               structured_analysis=analysis_result["structured"],
                               content_length=len(article_content),
+                              extraction_time=extraction_time,
+                              analysis_time=analysis_time,
                               api_details=api_details,
                               cached=False,
                               analyzed_at="Just now")
@@ -336,6 +374,79 @@ def analyze_form():
     # Return an empty div with the same ID as the analysis result container
     # This ensures the container exists when reopening another report
     return '<div id="analysis-result-container"></div>'
+
+@analysis_bp.route('/debug/raw-json', methods=['GET'])
+def debug_raw_json():
+    """
+    Debug endpoint to return the raw JSON for an analysis.
+    This helps diagnose JSON formatting issues by viewing the raw data.
+    
+    This endpoint is protected and only available in development environments.
+    """
+    from flask import Response, current_app
+    import re
+    from app.config.config import Config
+    
+    # Only allow this endpoint in development mode
+    if not current_app.config.get('DEBUG', False):
+        return jsonify({"error": "This endpoint is only available in development mode"}), 403
+    
+    # Basic authentication check - in a real implementation, this would use proper authentication
+    auth_token = request.args.get('auth_token', '')
+    admin_token = Config.ADMIN_DEBUG_TOKEN
+    
+    if not admin_token or auth_token != admin_token:
+        return jsonify({"error": "Authentication required"}), 401
+    
+    url = request.args.get('url', '')
+    
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+    
+    existing_analysis = get_analysis_by_url(url)
+    if not existing_analysis:
+        return jsonify({"error": "No analysis found for this URL"}), 404
+    
+    # Log what we're returning
+    info(f"DEBUG: Returning raw JSON for URL: {url}")
+    info(f"DEBUG: JSON content type: {type(existing_analysis['raw_text'])}")
+    info(f"DEBUG: JSON content length: {len(existing_analysis['raw_text'])}")
+    
+    # Create a meaningful filename from the URL
+    # Extract the domain from the URL
+    domain = urlparse(url).netloc
+    
+    # Remove port if present
+    if ':' in domain:
+        domain = domain.split(':')[0]
+    
+    # Remove www. if present
+    if domain.startswith('www.'):
+        domain = domain[4:]
+    
+    # Replace dots with underscores
+    domain = domain.replace('.', '_')
+    
+    # Add timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # Create filename: domain_timestamp.json
+    filename = f"analysis_{domain}_{timestamp}.json"
+    
+    # Sanitize filename (remove any invalid characters)
+    filename = re.sub(r'[^\w\-\.]', '_', filename)
+    
+    # Add an audit log entry for security monitoring
+    warning(f"Debug endpoint accessed for URL: {url} by client: {request.remote_addr}")
+    
+    # Return the raw JSON with proper content type
+    return Response(
+        existing_analysis['raw_text'],
+        mimetype='application/json',
+        headers={
+            'Content-Disposition': f'attachment; filename={filename}'
+        }
+    )
 
 @analysis_bp.route('/analysis/refresh', methods=['GET'])
 def refresh_analysis():
@@ -522,6 +633,8 @@ def refresh_analysis():
                              analysis=analysis_result["text"],
                              structured_analysis=analysis_result["structured"],
                              content_length=len(article_content),
+                             extraction_time=extraction_time,
+                             analysis_time=analysis_time,
                              api_details=api_details,
                              cached=False)
         
@@ -635,4 +748,19 @@ def export_analysis(format_type):
         as_attachment=True,
         download_name=filename,
         mimetype=content_types.get(format_type, 'application/octet-stream')
-    ) 
+    )
+
+@analysis_bp.route('/api/check_extraction_status/<path:url>', methods=['GET'])
+def check_extraction_status(url):
+    """
+    Endpoint to check if an article has been extracted and analyzed.
+    Used by HTMX to trigger backend processes when needed.
+    """
+    print_status(f"Checking extraction status for URL: {url}")
+    
+    # URL validation is handled internally in get_analysis_by_url
+    existing_analysis = get_analysis_by_url(url)
+    
+    # This endpoint doesn't need to return any content, it's just used
+    # as a trigger for HTMX to potentially perform background operations
+    return jsonify({"status": "ok", "exists": existing_analysis is not None}) 

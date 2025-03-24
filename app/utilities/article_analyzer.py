@@ -69,14 +69,6 @@ def analyze_article(
     if extract_iocs:
         info(f"Extracting indicators of compromise from content for {url}")
         extracted_indicators = extract_indicators(content)
-        
-        if extracted_indicators:
-            # Only store indicators if we found some
-            info(f"Storing {len(extracted_indicators)} extracted indicators for {url}")
-            try:
-                store_indicators(url, extracted_indicators)
-            except Exception as e:
-                error(f"Failed to store indicators: {str(e)}")
     
     try:
         # Override temperature from environment if available
@@ -89,7 +81,15 @@ def analyze_article(
                 warning(f"Invalid OPENAI_TEMPERATURE value: {env_temperature}, using default: {temperature}")
                 
         # Prepare the system prompt
-        system_prompt = "You are an expert threat intelligence analyst. Analyze the cybersecurity article and create a structured threat intelligence report."
+        system_prompt = """You are an expert threat intelligence analyst. Analyze the cybersecurity article and create a structured threat intelligence report.
+
+Your analysis must be thorough, technically accurate, and focus on extracting actionable threat intelligence.
+
+Ensure you provide detailed assessment of:
+1. Source reliability and credibility
+2. Threat actors with proper attribution confidence
+3. MITRE ATT&CK techniques with proper IDs and descriptions
+4. Critical infrastructure sector impact scoring"""
 
         # Get token limits based on model
         if 'gpt-4' in model:
@@ -601,13 +601,33 @@ Be specific and factual in your analysis, focusing on evidence from the text.
                 "threat_actors": []
             }
         
+        # Validate and ensure all required fields exist
+        self_validate_structured_data(structured_data)
+        
         # Include the extracted indicators if available
         if extracted_indicators:
             formatted_indicators = format_indicators_for_display(extracted_indicators)
             structured_data["indicators"] = formatted_indicators
             debug(f"Added {formatted_indicators['total_count']} extracted indicators to structured data")
+            
+        # Store indicators if available
+        if extracted_indicators and len(extracted_indicators) > 0:
+            try:
+                store_indicators(url, extracted_indicators)
+                debug(f"Stored {sum(len(indicators) for indicators in extracted_indicators.values())} indicators for URL: {url}")
+            except Exception as e:
+                warning(f"Failed to store indicators for URL: {url}. Error: {str(e)}")
         
-        return {
+        # Log the structured data before returning
+        debug("=================== ANALYSIS RESPONSE DATA ===================")
+        debug(f"Raw analysis text type: {type(analysis_text)}")
+        debug(f"Raw analysis text length: {len(analysis_text)}")
+        debug(f"Raw analysis first 100 chars: {analysis_text[:100]}")
+        debug(f"Is raw text valid JSON? {is_valid_json(analysis_text)}")
+        debug(f"Structured data keys: {list(structured_data.keys() if structured_data else [])}")
+        debug("=================== END ANALYSIS RESPONSE DATA ===================")
+        
+        result = {
             "text": analysis_text,
             "structured": structured_data,
             "api_details": {
@@ -617,12 +637,90 @@ Be specific and factual in your analysis, focusing on evidence from the text.
             "extracted_indicators": extracted_indicators
         }
         
+        debug(f"Final result contains keys: {list(result.keys())}")
+        return result
+        
     except Exception as e:
         error(f"Error in analyze_article: {str(e)}")
         error(traceback.format_exc())
         if verbose:
             print_status(f"Error in article analysis: {str(e)}", is_error=True)
         return None
+
+def self_validate_structured_data(data: Dict[str, Any]) -> None:
+    """
+    Ensure the structured data has all required fields.
+    Modifies the data dictionary in place to fix any missing fields.
+    
+    Args:
+        data: The structured data dictionary to validate
+    """
+    # Ensure top-level fields exist
+    if "summary" not in data or not data["summary"]:
+        data["summary"] = "No summary available."
+    
+    # Validate source_evaluation
+    if "source_evaluation" not in data or not data["source_evaluation"]:
+        data["source_evaluation"] = {
+            "reliability": {"level": "Medium", "justification": "No reliability assessment available."},
+            "credibility": {"level": "Medium", "justification": "No credibility assessment available."},
+            "source_type": "Unknown"
+        }
+    else:
+        source_eval = data["source_evaluation"]
+        if "reliability" not in source_eval or not source_eval["reliability"]:
+            source_eval["reliability"] = {"level": "Medium", "justification": "No reliability assessment available."}
+        else:
+            if "level" not in source_eval["reliability"] or not source_eval["reliability"]["level"]:
+                source_eval["reliability"]["level"] = "Medium"
+            if "justification" not in source_eval["reliability"] or not source_eval["reliability"]["justification"]:
+                source_eval["reliability"]["justification"] = "No justification provided."
+        
+        if "credibility" not in source_eval or not source_eval["credibility"]:
+            source_eval["credibility"] = {"level": "Medium", "justification": "No credibility assessment available."}
+        else:
+            if "level" not in source_eval["credibility"] or not source_eval["credibility"]["level"]:
+                source_eval["credibility"]["level"] = "Medium"
+            if "justification" not in source_eval["credibility"] or not source_eval["credibility"]["justification"]:
+                source_eval["credibility"]["justification"] = "No justification provided."
+        
+        if "source_type" not in source_eval or not source_eval["source_type"]:
+            source_eval["source_type"] = "Unknown"
+    
+    # Ensure arrays exist
+    for field in ["threat_actors", "mitre_techniques", "key_insights", "potential_issues", "intelligence_gaps", "critical_sectors"]:
+        if field not in data or not isinstance(data[field], list):
+            data[field] = []
+    
+    # Standard fixes for misformatted data
+    # For threat actors, ensure each has required fields
+    for actor in data["threat_actors"]:
+        if "name" not in actor or not actor["name"]:
+            actor["name"] = "Unknown Actor"
+        if "description" not in actor or not actor["description"]:
+            actor["description"] = "No description available."
+        if "confidence" not in actor or not actor["confidence"]:
+            actor["confidence"] = "Medium"
+        if "aliases" not in actor or not isinstance(actor["aliases"], list):
+            actor["aliases"] = []
+    
+    # For MITRE techniques, ensure each has required fields
+    for technique in data["mitre_techniques"]:
+        if "id" not in technique or not technique["id"]:
+            technique["id"] = "Unknown"
+        if "name" not in technique or not technique["name"]:
+            technique["name"] = "Unknown Technique"
+        if "description" not in technique or not technique["description"]:
+            technique["description"] = "No description available."
+    
+    # For critical sectors, ensure each has required fields
+    for sector in data["critical_sectors"]:
+        if "name" not in sector or not sector["name"]:
+            sector["name"] = "Unknown Sector"
+        if "score" not in sector or not isinstance(sector["score"], int):
+            sector["score"] = 1
+        if "justification" not in sector or not sector["justification"]:
+            sector["justification"] = "No justification available."
 
 def parse_analysis_response(text: str) -> Dict[str, Any]:
     """
@@ -998,4 +1096,12 @@ def parse_mitre_technique(text: str) -> Dict[str, str]:
     return {
         "id": "",
         "name": text.strip()
-    } 
+    }
+
+# Helper function to check if a string is valid JSON
+def is_valid_json(json_string):
+    try:
+        json.loads(json_string)
+        return True
+    except json.JSONDecodeError:
+        return False 

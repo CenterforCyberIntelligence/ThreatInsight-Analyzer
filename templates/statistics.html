@@ -5,32 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usage Statistics - Artificial Cyber Intelligence Analyst™</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Dynamic Heading Font -->
+    <link href="https://fonts.googleapis.com/css2?family={{ heading_font }}:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', t=current_time) }}">
+    <!-- CSS Variable for Font -->
+    <style>
+        :root {
+            --app-heading-font: '{{ heading_font }}';
+        }
+    </style>
     <!-- HTMX Library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container">
-            <div class="navbar-content">
-                <a href="/" class="logo">
-                    <i class="fas fa-shield-alt"></i>
-                    Center for Cyber Intelligence™ | 
-                    <span style="font-weight: 400; opacity: 0.8;">  Artificial Cyber Intelligence Analyst™</span>
-                </a>
-                <div class="model-badge">
-                    <i class="fas fa-brain"></i>
-                    Powered by OpenAI
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand cyber-brand" href="/">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                Center for Cyber Intelligence <span class="cyber-accent">Artificial Cyber Intelligence Analyst™</span>
+            </a>
+            <div class="d-flex">
+                <span class="powered-by-badge">
+                    <i class="bi bi-cpu-fill me-1"></i> Powered by OpenAI
+                </span>
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/">Home</a>
+                    <a class="nav-link active" href="/statistics">Statistics</a>
+                    <a class="nav-link" href="/history">History</a>
+                    <a class="nav-link" href="/settings">Settings</a>
                 </div>
-                <nav class="nav-links">
-                    <a href="/" class="nav-link">Home</a>
-                    <a href="/statistics" class="nav-link active">Statistics</a>
-                    <a href="/settings" class="nav-link">Settings</a>
-                </nav>
+                <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="header-support-btn">
+                    <i class="bi bi-cup-hot-fill"></i>
+                    Support
+                </a>
             </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="htmx-indicator">
@@ -39,181 +54,137 @@
         </div>
     </div>
 
-    <main class="main">
-        <div class="container">
-            <div class="card">
-                <div class="card-header">
+    <div id="main-content" class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title-wrapper">
                     <h2 class="card-title"><i class="fas fa-chart-bar"></i> Token Usage Statistics</h2>
                     <p class="card-subtitle">Detailed breakdown of API usage and costs</p>
-                    <button class="refresh-btn" 
-                            hx-get="/statistics/refresh" 
-                            hx-target="#stats-content" 
-                            hx-swap="outerHTML"
-                            hx-indicator="#loading-indicator"
-                            title="Refresh statistics">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
                 </div>
-                <div class="card-body" id="stats-content">
-                    <!-- Overall Stats -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-title">Total Tokens Used</div>
-                            <div class="stat-value">{{ token_stats.overall.total_tokens }}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-title">Articles Analyzed</div>
-                            <div class="stat-value">{{ recent_analyses|length }}</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-title">Total Cost</div>
-                            <div class="stat-value">$
-                                {% set total_cost = 0 %}
-                                {% if 'gpt-4o-mini' in token_stats.models %}
-                                    {% set total_cost = total_cost + (token_stats.models['gpt-4o-mini'].regular_input * model_prices['gpt-4o-mini'].input + token_stats.models['gpt-4o-mini'].cached_input * model_prices['gpt-4o-mini'].cached + token_stats.models['gpt-4o-mini'].total_output * model_prices['gpt-4o-mini'].output) / 1000000 %}
-                                {% endif %}
-                                {% if 'gpt-4o' in token_stats.models %}
-                                    {% set total_cost = total_cost + (token_stats.models['gpt-4o'].regular_input * model_prices['gpt-4o'].input + token_stats.models['gpt-4o'].cached_input * model_prices['gpt-4o'].cached + token_stats.models['gpt-4o'].total_output * model_prices['gpt-4o'].output) / 1000000 %}
-                                {% endif %}
-                                {% if 'gpt-4-turbo' in token_stats.models %}
-                                    {% set total_cost = total_cost + (token_stats.models['gpt-4-turbo'].regular_input * model_prices['gpt-4-turbo'].input + token_stats.models['gpt-4-turbo'].cached_input * model_prices['gpt-4-turbo'].cached + token_stats.models['gpt-4-turbo'].total_output * model_prices['gpt-4-turbo'].output) / 1000000 %}
-                                {% endif %}
-                                {{ total_cost | round(4) }}
-                            </div>
-                        </div>
+                <button class="refresh-btn" 
+                        hx-get="/statistics/refresh" 
+                        hx-target="#stats-content" 
+                        hx-swap="outerHTML"
+                        hx-indicator="#loading-indicator"
+                        title="Refresh statistics">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body" id="stats-content">
+                <!-- Overall Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">Total Tokens Used</div>
+                        <div class="stat-value">{{ token_stats.overall.total_tokens }}</div>
                     </div>
-
-                    <!-- Token Breakdown -->
-                    <div class="token-breakdown">
-                        <h3>Token Distribution</h3>
-                        <div class="token-grid">
-                            <div class="token-type">
-                                <span class="type-label">Input Tokens</span>
-                                <span class="type-value">{{ token_stats.overall.total_input }}</span>
-                            </div>
-                            <div class="token-type">
-                                <span class="type-label">Output Tokens</span>
-                                <span class="type-value">{{ token_stats.overall.total_output }}</span>
-                            </div>
-                            <div class="token-type">
-                                <span class="type-label">Cached Tokens</span>
-                                <span class="type-value">{{ token_stats.overall.cached_input }}</span>
-                            </div>
-                        </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Articles Analyzed</div>
+                        <div class="stat-value">{{ recent_analyses|length }}</div>
                     </div>
-
-                    <!-- Model Usage -->
-                    <div class="model-usage">
-                        <h3>Usage by Model</h3>
-                        <div class="model-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">Total Cost</div>
+                        <div class="stat-value">
+                            {% set total_cost = 0 %}
                             {% for model_id, stats in token_stats.models.items() %}
-                            <div class="model-card">
-                                <div class="model-header">
-                                    <h4>{{ model_id }}</h4>
+                                {% if model_id in model_prices and model_prices[model_id] is mapping %}
+                                    {% set model_price = model_prices[model_id] %}
+                                    {% if model_price.input is defined and model_price.cached is defined and model_price.output is defined %}
+                                        {% set total_cost = total_cost + (stats.regular_input * model_price.input + 
+                                                                       stats.cached_input * model_price.cached + 
+                                                                       stats.total_output * model_price.output) / 1000000 %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            ${{ total_cost | round(4) }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Breakdown -->
+                <div class="token-breakdown">
+                    <h3><i class="fas fa-exchange-alt"></i> Token Distribution</h3>
+                    <div class="token-grid">
+                        <div class="token-type">
+                            <span class="type-label">Input Tokens</span>
+                            <span class="type-value">{{ token_stats.overall.total_input }}</span>
+                        </div>
+                        <div class="token-type">
+                            <span class="type-label">Output Tokens</span>
+                            <span class="type-value">{{ token_stats.overall.total_output }}</span>
+                        </div>
+                        <div class="token-type">
+                            <span class="type-label">Cached Tokens</span>
+                            <span class="type-value">{{ token_stats.overall.cached_input }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Usage -->
+                <div class="model-usage">
+                    <h3><i class="fas fa-microchip"></i> Usage by Model</h3>
+                    <div class="model-grid">
+                        {% for model_id, stats in token_stats.models.items() %}
+                        <div class="model-card">
+                            <div class="model-header">
+                                <h4>{{ model_id }}</h4>
+                            </div>
+                            <div class="model-stats">
+                                <div class="model-stat">
+                                    <span>Regular Input</span>
+                                    <span>{{ stats.regular_input }}</span>
                                 </div>
-                                <div class="model-stats">
-                                    <div class="model-stat">
-                                        <span>Regular Input</span>
-                                        <span>{{ stats.regular_input }}</span>
-                                    </div>
-                                    <div class="model-stat">
-                                        <span>Cached Input</span>
-                                        <span>{{ stats.cached_input }}</span>
-                                    </div>
-                                    <div class="model-stat">
-                                        <span>Output</span>
-                                        <span>{{ stats.total_output }}</span>
-                                    </div>
-                                    <div class="model-cost">
-                                        <span>Cost</span>
-                                        <span>
-                                            {% if model_id in model_prices %}
-                                                ${{ ((stats.regular_input * model_prices[model_id].input + stats.cached_input * model_prices[model_id].cached + stats.total_output * model_prices[model_id].output) / 1000000) | round(4) }}
+                                <div class="model-stat">
+                                    <span>Cached Input</span>
+                                    <span>{{ stats.cached_input }}</span>
+                                </div>
+                                <div class="model-stat">
+                                    <span>Output</span>
+                                    <span>{{ stats.total_output }}</span>
+                                </div>
+                                <div class="model-cost">
+                                    <span>Cost</span>
+                                    <span>
+                                        {% if model_id in model_prices and model_prices[model_id] is mapping %}
+                                            {% set model_price = model_prices[model_id] %}
+                                            {% if model_price.input is defined and model_price.cached is defined and model_price.output is defined %}
+                                                ${{ ((stats.regular_input * model_price.input + 
+                                                     stats.cached_input * model_price.cached + 
+                                                     stats.total_output * model_price.output) / 1000000) | round(4) }}
                                             {% else %}
-                                                $0.00 (pricing unavailable)
+                                                $0.00 (pricing incomplete)
                                             {% endif %}
-                                        </span>
-                                    </div>
+                                        {% else %}
+                                            $0.00 (pricing unavailable)
+                                        {% endif %}
+                                    </span>
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-copyright">
-                    <p>&copy; 2025 <a href="https://www.centerforcyberintelligence.org" target="_blank">Center for Cyber Intelligence</a>. All Rights Reserved.</p>
-                </div>
-                <div class="footer-links">
-                    <a href="/">Home</a>
-                    <a href="/statistics">Statistics</a>
-                    <a href="/settings">Settings</a>
-                </div>
-            </div>
+    <div class="footer-links">
+        <div class="footer-nav">
+            <a href="/">Home</a>
+            <a href="/statistics" class="active">Statistics</a>
+            <a href="/history">History</a>
+            <a href="/settings">Settings</a>
         </div>
-    </footer>
+        <div class="footer-info">
+            <span class="copyright">© 2025 Center for Cyber Intelligence</span>
+            <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="bmc-button">
+                <i class="bi bi-cup-hot-fill"></i>
+                Support This Project
+            </a>
+        </div>
+    </div>
 
-    <!-- HTMX specific styles -->
-    <style>
-        .htmx-indicator {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-        }
-        
-        .htmx-request .htmx-indicator {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .spinner-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #3498db;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .refresh-btn {
-            background: none;
-            border: none;
-            color: #3498db;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-        
-        .refresh-btn:hover {
-            background-color: rgba(52, 152, 219, 0.1);
-        }
-    </style>
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

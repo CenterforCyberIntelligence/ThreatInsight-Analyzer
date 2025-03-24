@@ -26,7 +26,8 @@ def settings():
         "AVAILABLE_MODELS": os.getenv("AVAILABLE_MODELS", ""),
         "FLASK_HOST": os.getenv("FLASK_HOST", ""),
         "FLASK_PORT": os.getenv("FLASK_PORT", ""),
-        "FLASK_DEBUG": os.getenv("FLASK_DEBUG", "")
+        "FLASK_DEBUG": os.getenv("FLASK_DEBUG", ""),
+        "HEADING_FONT": os.getenv("HEADING_FONT", "Rajdhani")
     }
     
     # Get token usage statistics
@@ -66,7 +67,8 @@ def update_env():
             "AVAILABLE_MODELS": request.form.get("AVAILABLE_MODELS"),
             "FLASK_HOST": request.form.get("FLASK_HOST"),
             "FLASK_PORT": request.form.get("FLASK_PORT"),
-            "FLASK_DEBUG": request.form.get("FLASK_DEBUG")
+            "FLASK_DEBUG": request.form.get("FLASK_DEBUG"),
+            "HEADING_FONT": request.form.get("HEADING_FONT")
         }
         
         # Validate JSON format for AVAILABLE_MODELS

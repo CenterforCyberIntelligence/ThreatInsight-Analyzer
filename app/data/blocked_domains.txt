@@ -1,0 +1,21 @@
+# Blocked Domains List
+# Format: One domain per line, no comments after domain names
+# Last Updated: 2025-03-22
+
+# Known malicious patterns
+example-malicious-site.com
+known-phishing-domain.net
+malware-distribution.com
+phishing-campaign.org
+suspicious-downloads.net
+
+# IP-based patterns to block
+ip-192-99-148.net
+ns513726.ip-192-99-148.net
+ip-192-99
+ip-104-140
+ip-92-242
+192-99-148.net
+192.99.148.net
+
+# Add additional domains below

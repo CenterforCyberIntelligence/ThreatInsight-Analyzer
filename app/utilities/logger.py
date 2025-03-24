@@ -1,11 +1,21 @@
 import os
 import sys
 import logging
+import json
+import time
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Any, Dict, Union, Callable
 import traceback
 from flask import Request
+
+# Global dictionary to store startup timings
+_startup_phases = {}
+_startup_phase_start_times = {}
+_startup_current_phase = None
+
+# Check if this is a reloader process (to avoid duplicate console output)
+_is_reloader_process = os.environ.get('WERKZEUG_RUN_MAIN') != 'true'
 
 # Import configuration (avoid circular imports by importing here)
 try:
@@ -19,7 +29,7 @@ except (ImportError, AttributeError):
     # Fallback values if Config is not available
     logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
     log_level = logging.INFO
-    log_format = '%(asctime)s - %(levelname)s - %(message)s'
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     max_bytes = 10 * 1024 * 1024  # 10MB
     backup_count = 5
 
@@ -30,6 +40,11 @@ if not os.path.exists(logs_dir):
 # Configure the logger
 logger = logging.getLogger('article_analyzer')
 logger.setLevel(log_level)
+
+# Clear any existing handlers to prevent duplicates
+if logger.handlers:
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
 
 # Create a formatter
 formatter = logging.Formatter(log_format)
@@ -57,32 +72,116 @@ if log_level <= logging.DEBUG:
     logger.addHandler(debug_handler)
 
 # Create a stream handler for console output
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(log_level)
+# In debug mode with reloader, only show console output in the worker process
+if not _is_reloader_process:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level)
 
-# Create a custom formatter for the console (with colors)
-class ColoredFormatter(logging.Formatter):
-    COLORS = {
-        'DEBUG': '\033[94m',  # Blue
-        'INFO': '\033[94m',   # Blue
-        'WARNING': '\033[93m', # Yellow
-        'ERROR': '\033[91m',  # Red
-        'CRITICAL': '\033[91m\033[1m'  # Bold Red
-    }
-    RESET = '\033[0m'
+    # Create a custom formatter for the console (with colors)
+    class ColoredFormatter(logging.Formatter):
+        COLORS = {
+            'DEBUG': '\033[94m',  # Blue
+            'INFO': '\033[94m',   # Blue
+            'WARNING': '\033[93m', # Yellow
+            'ERROR': '\033[91m',  # Red
+            'CRITICAL': '\033[91m\033[1m'  # Bold Red
+        }
+        RESET = '\033[0m'
+        
+        def format(self, record):
+            log_message = super().format(record)
+            color = self.COLORS.get(record.levelname, self.RESET)
+            return f"{color}{log_message}{self.RESET}"
+
+    console_formatter = ColoredFormatter(log_format)
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+# Log the logger initialization only in the worker process
+if not _is_reloader_process:
+    logger.info(f"Logger initialized at level {logging.getLevelName(log_level)}")
+    logger.info(f"Log files will be stored in {logs_dir}")
+else:
+    # Minimal logging for reloader process
+    logger.debug(f"Reloader process logger initialized at level {logging.getLevelName(log_level)}")
+
+def start_phase(phase_name: str) -> None:
+    """
+    Start timing a startup phase.
     
-    def format(self, record):
-        log_message = super().format(record)
-        color = self.COLORS.get(record.levelname, self.RESET)
-        return f"{color}{log_message}{self.RESET}"
+    Args:
+        phase_name: Name of the startup phase
+    """
+    global _startup_current_phase, _startup_phase_start_times
+    
+    # In reloader process, only log API_SERVER phase at debug level
+    if _is_reloader_process:
+        if phase_name == "API_SERVER":
+            logger.debug(f"=== STARTING PHASE: {phase_name} (reloader process) ===")
+        return
+    
+    _startup_current_phase = phase_name
+    _startup_phase_start_times[phase_name] = time.time()
+    
+    logger.info(f"=== STARTING PHASE: {phase_name} ===")
 
-console_formatter = ColoredFormatter(log_format)
-console_handler.setFormatter(console_formatter)
-logger.addHandler(console_handler)
+def end_phase(phase_name: str = None) -> None:
+    """
+    End timing a startup phase and record the duration.
+    
+    Args:
+        phase_name: Name of the startup phase (defaults to current)
+    """
+    global _startup_current_phase, _startup_phases, _startup_phase_start_times
+    
+    # Skip timing in reloader process
+    if _is_reloader_process:
+        return
+    
+    if phase_name is None:
+        phase_name = _startup_current_phase
+    
+    if phase_name in _startup_phase_start_times:
+        duration = time.time() - _startup_phase_start_times[phase_name]
+        _startup_phases[phase_name] = duration
+        logger.info(f"=== COMPLETED PHASE: {phase_name} in {duration:.2f}s ===")
+    else:
+        logger.warning(f"Attempted to end unknown phase: {phase_name}")
 
-# Log the logger initialization
-logger.info(f"Logger initialized at level {logging.getLevelName(log_level)}")
-logger.info(f"Log files will be stored in {logs_dir}")
+def get_startup_timings() -> Dict[str, float]:
+    """Get the timing information for all startup phases."""
+    return _startup_phases
+
+def structured_log(level: str, message: str, **kwargs) -> None:
+    """
+    Create structured log entry with additional context.
+    
+    Args:
+        level: Log level (debug, info, warning, error, critical)
+        message: Main log message
+        **kwargs: Additional context to include in structured log
+    """
+    # Add timestamp
+    context = {
+        'timestamp': datetime.utcnow().isoformat(),
+        'message': message
+    }
+    
+    # Add any additional context
+    if kwargs:
+        context.update(kwargs)
+    
+    # Create structured message
+    if level == 'debug':
+        logger.debug(json.dumps(context))
+    elif level == 'info':
+        logger.info(json.dumps(context))
+    elif level == 'warning':
+        logger.warning(json.dumps(context))
+    elif level == 'error':
+        logger.error(json.dumps(context))
+    elif level == 'critical':
+        logger.critical(json.dumps(context))
 
 def print_status(message: str, is_error: bool = False) -> None:
     """
@@ -98,25 +197,100 @@ def print_status(message: str, is_error: bool = False) -> None:
         logger.info(message)
 
 # Add dedicated functions for different log levels
-def debug(message: str) -> None:
+def debug(message: str, **kwargs) -> None:
     """Log a debug message."""
-    logger.debug(message)
+    if kwargs:
+        structured_log('debug', message, **kwargs)
+    else:
+        logger.debug(message)
 
-def info(message: str) -> None:
+def info(message: str, **kwargs) -> None:
     """Log an info message."""
-    logger.info(message)
+    if kwargs:
+        structured_log('info', message, **kwargs)
+    else:
+        logger.info(message)
 
-def warning(message: str) -> None:
+def warning(message: str, **kwargs) -> None:
     """Log a warning message."""
-    logger.warning(message)
+    if kwargs:
+        structured_log('warning', message, **kwargs)
+    else:
+        logger.warning(message)
 
-def error(message: str) -> None:
+def error(message: str, **kwargs) -> None:
     """Log an error message."""
-    logger.error(message)
+    if kwargs:
+        structured_log('error', message, **kwargs)
+    else:
+        logger.error(message)
 
-def critical(message: str) -> None:
+def critical(message: str, **kwargs) -> None:
     """Log a critical message."""
-    logger.critical(message)
+    if kwargs:
+        structured_log('critical', message, **kwargs)
+    else:
+        logger.critical(message)
+
+def log_config_summary(config: Dict[str, Any]) -> None:
+    """
+    Log a sanitized summary of the configuration.
+    
+    Args:
+        config: Dictionary of configuration values
+    """
+    # Make a copy of the config to avoid modifying the original
+    safe_config = config.copy()
+    
+    # Sanitize sensitive values
+    sensitive_keys = ['api_key', 'key', 'password', 'secret', 'token']
+    for key in safe_config.keys():
+        for sensitive in sensitive_keys:
+            if sensitive in key.lower():
+                safe_config[key] = '***REDACTED***'
+    
+    # Log the sanitized config
+    info("Configuration summary:", config=safe_config)
+
+_shutdown_handler_registered = False
+
+def register_shutdown_handler(app, callback: Callable) -> None:
+    """
+    Register a function to be called when the application shuts down.
+    Uses a global flag to prevent duplicate registrations.
+    
+    Args:
+        app: Flask application instance
+        callback: Function to call on shutdown
+    """
+    global _shutdown_handler_registered
+    
+    # Skip if already registered
+    if _shutdown_handler_registered:
+        return
+        
+    import atexit
+    import signal
+    import sys
+    
+    # Register the function to be called on normal interpreter exit
+    atexit.register(callback)
+    
+    # Special handler for SIGINT (CTRL+C) that forces exit after callback
+    def sigint_handler(sig, frame):
+        callback(sig, frame)
+        # Force exit to prevent hanging in Flask debug mode
+        sys.exit(0)
+    
+    # Register the function to be called on SIGTERM
+    signal.signal(signal.SIGTERM, callback)
+    
+    # On Unix-like systems, register SIGINT handler with special handling
+    if hasattr(signal, 'SIGINT'):
+        signal.signal(signal.SIGINT, sigint_handler)
+        
+    # Mark as registered to avoid duplicates
+    _shutdown_handler_registered = True
 
 # Functions needed for tests
 def setup_logging(

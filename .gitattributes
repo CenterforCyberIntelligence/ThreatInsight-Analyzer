@@ -1,0 +1,94 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Python source files
+*.py text diff=python
+*.pyi text diff=python
+*.pyw text diff=python
+
+# Python environments and configurations
+*.env text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+requirements.txt text eol=lf
+requirements-dev.txt text eol=lf
+Procfile text eol=lf
+pytest.ini text eol=lf
+setup.cfg text eol=lf
+.cursorrules text eol=lf
+
+# Documentation
+*.md text diff=markdown
+*.rst text
+LICENSE.md text
+CHANGELOG.md text
+TODO.md text
+Known?Issues.md text
+
+# Web files
+*.html text diff=html
+*.htm text diff=html
+*.css text diff=css
+*.js text
+*.json text
+*.xml text
+
+# Data files
+*.csv text
+*.tab text
+*.tsv text
+*.sql text
+
+# Templates
+*.jinja text
+*.jinja2 text
+*.j2 text
+
+# Shell scripts should use LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows batch scripts should use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# SQLite database files 
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Binary files (no EOL conversions)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+# Python bytecode
+*.pyc binary
+*.pyo binary
+*.pyd binary
+__pycache__/ binary
+
+# Exclude from git archive exports
+.github export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.gitkeep export-ignore
+.editorconfig export-ignore
+
+# Linguist overrides to correctly identify language
+static/js/lib/* linguist-vendored
+static/css/lib/* linguist-vendored 

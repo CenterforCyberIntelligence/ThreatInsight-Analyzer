@@ -1,35 +1,59 @@
-<div class="recent-list" id="recent-analyses-list">
-    {% for analysis in recent_analyses %}
-    <div class="recent-item">
-        <div class="recent-content">
-            <h3 class="recent-title">
-                <a href="{{ analysis['url'] }}" target="_blank" class="article-link">
-                    {{ analysis['title'] if analysis['title'] else analysis['url']|truncate(70) }}
-                </a>
-            </h3>
-            <div class="recent-meta">
-                <span class="recent-date">
-                    <i class="far fa-clock"></i>
-                    {% if analysis['created_at'] is string %}
-                        {{ analysis['created_at'] }}
-                    {% else %}
-                        {{ analysis['created_at'].strftime('%B %d, %Y') }}
-                    {% endif %}
-                </span>
-                <span class="recent-model">
-                    <i class="fas fa-robot"></i>
-                    {{ analysis['model'] }}
-                </span>
+<div class="recent-analyses-list">
+    {% if recent_analyses %}
+        {% for analysis in recent_analyses %}
+        <div class="analysis-list-item p-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="analysis-item-content pe-3">
+                    <div class="url-container text-truncate mb-1">
+                        <a href="{{ analysis['url'] }}" target="_blank" class="analysis-url">
+                            {% if analysis['title'] %}
+                                {{ analysis['title']|truncate(60) }}
+                            {% else %}
+                                {% set parsed_url = analysis['url'].replace('https://', '').replace('http://', '').split('/') %}
+                                <span class="domain-part">{{ parsed_url[0] }}</span>{{ '/' + '/'.join(parsed_url[1:]) if parsed_url|length > 1 else '' }}
+                            {% endif %}
+                        </a>
+                    </div>
+                    <div class="analysis-meta text-muted d-flex flex-wrap align-items-center">
+                        <span class="me-3">
+                            <i class="bi bi-clock me-1"></i>
+                            {% if analysis['created_at'] is string %}
+                                {% set date_obj = analysis['created_at'].split('T') %}
+                                {% if date_obj|length > 1 %}
+                                    {% set date_part = date_obj[0] %}
+                                    {% set time_part = date_obj[1].split('.')[0] %}
+                                    {% set time_display = time_part.split(':')[0] + ':' + time_part.split(':')[1] %}
+                                    {{ date_part }} at {{ time_display }}
+                                {% else %}
+                                    {{ analysis['created_at'] }}
+                                {% endif %}
+                            {% else %}
+                                {{ analysis['created_at'].strftime('%b %d, %Y at %H:%M') }}
+                            {% endif %}
+                        </span>
+                        <span class="badge bg-info small">
+                            <i class="bi bi-cpu me-1"></i>
+                            {{ analysis['model'] }}
+                        </span>
+                    </div>
+                </div>
+                <div class="analysis-action flex-shrink-0">
+                    <button class="btn btn-primary btn-sm" 
+                            hx-get="/analysis/result?url={{ analysis['url'] }}&model={{ analysis['model'] }}" 
+                            hx-target="#analysis-container"
+                            hx-swap="innerHTML"
+                            hx-indicator="#loading-indicator">
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        View
+                    </button>
+                </div>
             </div>
         </div>
-        <button class="view-analysis-btn" 
-                hx-get="/analysis/result?url={{ analysis['url'] }}" 
-                hx-target="#analysis-result-container"
-                hx-swap="innerHTML"
-                hx-indicator="#loading-indicator">
-            <i class="fas fa-file-alt"></i>
-            View Report
-        </button>
-    </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No analysis history found. Submit a URL to analyze an article.
+        </div>
+    {% endif %}
 </div> 

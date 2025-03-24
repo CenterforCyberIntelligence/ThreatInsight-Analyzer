@@ -2,367 +2,132 @@
 
 > This document contains known issues in the codebase identified with the assistance of an AI agent. I'm aware of these issues and plan to address them in future development iterations.
 
-## Security Issues
-
-### 1. Lack of Input Validation ✅ RESOLVED
-**File**: `app/blueprints/analysis.py`
-
-**Resolution**: Implemented robust URL validation in version 1.0.1 (2025-03-23) with the following features:
-- Added validators library for URL format validation
-- Implemented allowed domain patterns and TLD validation
-- Added domain blocklist capability 
-- Added protocol validation (HTTP/HTTPS only)
-- Implemented input sanitization for all user-provided inputs
-
-For configuration details, see the README section on URL Validation.
-
-### 2. Unsafe SQL Queries ✅ RESOLVED
-**File**: `app/models/database.py`
-
-**Resolution**: Implemented proper SQL query safety in version 1.0.1 (2025-03-23) with the following improvements:
-- Created a database connection context manager for proper resource handling
-- Standardized parameterized queries throughout all database operations
-- Added a centralized error handling and logging system
-- Implemented proper transaction management (commit/rollback)
-- Added a safe query execution utility function
-
-These changes prevent SQL injection vulnerabilities by ensuring all user input is properly parameterized.
-
-### 3. XSS Vulnerabilities in Templates
-**File**: `templates/partials/analysis_result.html`
-
-I've identified potential cross-site scripting (XSS) vulnerabilities where unfiltered content is rendered in templates using the `|safe` filter. This could allow malicious content to be executed in users' browsers. To fix this, I need to:
-- Remove `|safe` filters where not absolutely necessary
-- Implement proper HTML sanitization for user-generated content
-- Use safer alternatives like specific escaping functions for formatting
-
-## Performance Issues
-
-### 4. Inefficient Token Usage Calculation
-**File**: `app/models/database.py`
-
-The current implementation calculates token usage statistics on-demand with complex queries that may become inefficient as the database grows. I should:
-- Implement a caching strategy for token usage statistics
-- Consider incremental updates instead of recalculating them each time
-- Look into materialized views or pre-calculated values for frequently accessed statistics
-
-### 5. Synchronous OpenAI API Calls
-**File**: `app/utilities/article_analyzer.py`
-
-API calls to OpenAI are currently made synchronously, which blocks the request thread and impacts user experience for longer operations. I need to:
-- Implement asynchronous API calls using async/await
-- Consider using a task queue like Celery for long-running tasks
-- Set up a proper background job system for analysis tasks
-
-### 6. Inefficient Article Extraction
-**File**: `app/utilities/article_extractor.py`
-
-The current article extraction process tries multiple methods sequentially, which can be slow and inefficient. I should improve this by:
-- Implementing parallel extraction attempts when possible
-- Caching extracted content to avoid repeated processing
-- Refining extraction algorithms based on domain patterns
-
-## Database Issues
-
-### 7. SQLite for Production Use
-**File**: `app/config/config.py`
-
-I'm currently using SQLite, which may not scale well for production use. While fine for development, I should consider:
-- Migrating to a more robust database like PostgreSQL for production
-- Implementing proper connection pooling
-- Adding configuration options to easily switch between database types
-
-### 8. Lack of Database Migrations
-**Issue**: There's a manual migration script but no proper migration framework.
-
-The current codebase includes a basic migration script but lacks a structured migration framework. I should:
-- Implement a proper database migration tool like Alembic or Flask-Migrate
-- Set up versioned migrations for all schema changes
-- Create proper documentation for the migration process
-
-### 9. Type Mismatch Errors in Database
-**File**: `logs/error.log`
-
-There are several "datatype mismatch" errors appearing in the logs, indicating inconsistencies in the database schema. I need to:
-- Review the database schema and ensure consistent types
-- Add proper type checking and validation before database operations
-- Fix the specific queries causing the errors
-
-## Error Handling Issues
-
-### 10. Inconsistent Error Handling
-**Issue**: Error handling is implemented inconsistently across the application.
-
-The application needs a more unified approach to error handling. I should:
-- Implement a consistent error handling strategy across all modules
-- Create custom exception classes for different error types
-- Ensure errors are properly logged and presented to users in a consistent way
-
-### 11. Insufficient Error Logging
-**File**: `app/utilities/logger.py`
-
-The current logging implementation doesn't consistently capture context or stack traces. I need to:
-- Enhance the logging system to include more context with errors
-- Add request IDs to logs for easier debugging and tracing
-- Consider implementing structured logging for better analysis
-
-## UI/UX Issues
-
-### 12. Modal Refresh Confirmation Needs Improvement
-**File**: `templates/partials/analysis_result.html`
-
-The refresh confirmation modal lacks clear feedback and error handling states. I should:
-- Add proper error states to the modal
-- Improve the loading animation and user feedback
-- Implement timeout handling for long-running operations
-
-### 13. Inconsistent UI Element Styling
-**File**: `static/css/styles.css`
-
-The CSS has some inconsistent naming patterns and potential specificity issues. I plan to:
-- Standardize CSS naming conventions (possibly using BEM methodology)
-- Review CSS specificity and reorganize rules more systematically
-- Consider implementing a CSS preprocessor like SASS
-
-### 22. Template Rendering Error in IOC Display ✅ RESOLVED
-**File**: `templates/partials/analysis_result.html`
-
-**Resolution**: Fixed in version 1.0.1 (2025-03-23) with the following improvements:
-- Added custom Jinja2 filter 'zfill' in app/__init__.py to pad strings with zeros
-- Updated template to correctly use the filter for MITRE technique IDs
-- Fixed the rendering error for MITRE ATT&CK techniques with sub-technique IDs (e.g., T1234.001)
-
-This resolves the template error: `jinja2.exceptions.TemplateRuntimeError: No filter named 'zfill' found.`
-
-### 23. Missing Extraction Fallbacks
-**File**: `app/utilities/article_extractor.py`
-
-The error logs show several cases where content extraction failed with "content too short" errors. I need to:
-- Implement more robust fallback mechanisms for content extraction
-- Add support for different types of websites and content structures
-- Improve error handling when extraction fails
-- Consider using a more advanced extraction library or service as a fallback
-
-## Test vs. Implementation Discrepancies
-
-The following issues represent discrepancies between test expectations and actual code implementation. These need careful evaluation to determine whether to modify the implementation or update the tests:
-
-### Current Discrepancies
-
-- **Issue**: Indicator extractor tests expect a combined 'hash' key for hash indicators, but implementation separates by type (md5, sha1, sha256)  
-  **Temporary fix**: Updated tests to check specific hash type keys instead of the combined 'hash' key  
-  **Decision needed**: Should the implementation be modified to combine hash types under a single 'hash' key, or is the current type-specific separation preferable?  
-  **Criticality**: Medium - The current implementation with separate hash types is more precise and follows security best practices, but may require API changes if consolidated.
-
-- **Issue**: CVE identifier case handling in tests doesn't match implementation behavior  
-  **Temporary fix**: Updated test to check for case-normalized CVE identifiers  
-  **Decision needed**: Should the implementation normalize all CVE IDs to a consistent case format, or allow mixed case with case-insensitive comparison?  
-  **Criticality**: Low - Standards typically specify CVE IDs should be uppercase, but case-insensitive comparison may be more user-friendly.
-
-- **Issue**: clean_extracted_text function behavior with whitespace doesn't match test expectations  
-  **Temporary fix**: Updated test to match the actual behavior (preserving whitespace within lines)  
-  **Decision needed**: Should the implementation be modified to strip all whitespace as originally expected, or is preserving inline whitespace the desired behavior?  
-  **Criticality**: Low - Whitespace handling is primarily an aesthetic issue that doesn't affect core functionality.
-
-## Additional Test Failures
-
-### Critical Issues (Blocking Functionality)
-
-- **Issue**: OpenAI API integration issues throughout tests  
-  **Details**: Multiple test failures due to `AttributeError: module 'openai.resources.chat.completions' has no attribute 'ChatCompletions'`  
-  **Impact**: Core analysis functionality is broken  
-  **Root cause**: The OpenAI API interface has changed since the tests were written  
-  **Resolution needed**: Update the article_analyzer module to use the current OpenAI API interface
-
-- **Issue**: Missing routes in main and settings blueprints  
-  **Details**: All route tests failing with 404 errors  
-  **Impact**: Core application navigation is broken  
-  **Root cause**: Routes defined in tests don't match implemented routes  
-  **Resolution needed**: Either implement the missing routes or update tests to match actual routes
-
-- **Issue**: Database model changes causing test failures  
-  **Details**: Mismatches in database field names and expected data structures  
-  **Impact**: Data persistence and retrieval is broken  
-  **Root cause**: Schema changes not reflected in tests  
-  **Resolution needed**: Synchronize database schema between tests and implementation
-
-### High Priority Issues (Affecting Core Features)
-
-- **Issue**: Missing environment variable handling in settings blueprint  
-  **Details**: Missing `update_env_file` function in settings blueprint  
-  **Impact**: Cannot update application configuration through UI  
-  **Root cause**: Function not implemented or renamed  
-  **Resolution needed**: Implement the function or update tests to use the correct function name
-
-- **Issue**: Analysis workflow tests failing  
-  **Details**: Multiple failures in the analysis blueprint tests  
-  **Impact**: Core analysis functionality may be broken  
-  **Root cause**: Multiple issues including API interface changes and route discrepancies  
-  **Resolution needed**: Fix API integration and update tests to match current workflow
-
-- **Issue**: Helper function inconsistencies  
-  **Details**: Functions like format_timestamp, generate_slug, sanitize_filename returning different values than expected  
-  **Impact**: May affect display and data handling throughout the application  
-  **Root cause**: Implementation differs from test expectations  
-  **Resolution needed**: Review helper functions and align with expectations, particularly for security-sensitive functions
-
-### Medium Priority Issues (Affecting Optional Features)
-
-- **Issue**: Error handler tests failing  
-  **Details**: Custom error pages not working as expected  
-  **Impact**: Poor user experience when errors occur  
-  **Root cause**: Error handlers may not be registered or templates missing  
-  **Resolution needed**: Implement proper error handling or update tests
-
-- **Issue**: Export functionality partially implemented  
-  **Details**: Frontend export UI and backend routes have been implemented, but PDF format exports are not properly formatted  
-  **Impact**: Users can export JSON, CSV, and Markdown, but PDF exports cannot be opened in Adobe Acrobat  
-  **Root cause**: Implementation differs from test expectations and PDF generation is currently just a placeholder  
-  **Resolution needed**: Implement proper PDF export functionality with WeasyPrint or ReportLab
-
-### Low Priority Issues (Minor Inconsistencies)
-
-- **Issue**: Contact form validation discrepancies  
-  **Details**: Tests expect 400 responses for invalid data but receiving 404  
-  **Impact**: Form validation may be bypassed or route missing  
-  **Root cause**: Route not implemented or validation logic changed  
-  **Resolution needed**: Implement proper form validation or update tests
-
-- **Issue**: Truncate text function behavior  
-  **Details**: Inconsistent truncation with ellipsis  
-  **Impact**: Minor display issues  
-  **Root cause**: Implementation differs from test expectations  
-  **Resolution needed**: Standardize text truncation behavior
-
-Once decisions are made on these discrepancies, either the implementation will be updated to match the original test expectations, or the test changes will be finalized as the correct approach.
-
-## Current Issues
-
-### Test Failures
-- Multiple test failures in various modules due to API changes or implementation discrepancies
-- Helper function tests failing due to changes in expected behavior (`sanitize_filename`, `truncate_text`, `calculate_percentages`)
-- Main blueprint tests failing due to missing routes (`about`, `sitemap.xml`, `robots.txt`, `contact`)
-- Integration tests failing due to missing mock fixtures
-- Settings blueprint tests failing due to missing or incorrect implementation
-
-### Implementation Discrepancies
-- Database module location discrepancy: tests reference `app.utilities.database` but implementation uses `app.models.database`
-- Missing `update_env_file` and `read_env_file` functions in the settings blueprint
-
-### Export Functionality Issues
-- **Issue**: Adobe Acrobat cannot open exported PDF files
-  **Details**: Users encounter an error: "Adobe Acrobat could not open '<NAME>.pdf' because it is either not a supported file type or because the file has been damaged (for example, it was sent as an email attachment and wasn't correctly decoded)."
-  **Impact**: Users cannot view exported PDF analyses in Adobe Acrobat
-  **Root cause**: The current PDF export implementation creates a text file with a .pdf extension instead of a properly formatted PDF file
-  **Resolution needed**: Implement proper PDF generation using a library such as WeasyPrint or ReportLab
-
-Once decisions are made on these discrepancies, either the implementation will be updated to match the original test expectations, or the test changes will be finalized as the correct approach.
+## Active Issues
+
+### Critical Issues
+
+| Issue | File | Description |
+|-------|------|-------------|
+| 🔴 **XSS Vulnerabilities in Templates** | `templates/partials/analysis_result.html` | Potential cross-site scripting vulnerabilities where unfiltered content is rendered in templates using the `\|safe` filter. This could allow malicious content to be executed in users' browsers. |
+| 🔴 **OpenAI API Integration Issues** | Various | Multiple test failures due to `AttributeError: module 'openai.resources.chat.completions' has no attribute 'ChatCompletions'`. Core analysis functionality is broken. |
+| 🔴 **Missing Routes** | Various | Route tests failing with 404 errors. Core application navigation is broken. |
+| 🔴 **Database Model Changes** | Various | Mismatches in database field names and expected data structures causing test failures. |
+
+### High Priority Issues
+
+| Issue | File | Description |
+|-------|------|-------------|
+| 🟠 **Potential SQL Injection in Database Operations** | `app/blueprints/settings.py` | The `purge_database()` function uses direct SQL execution without parameterized queries, which could lead to SQL injection vulnerabilities if modified in the future. |
+| 🟠 **Synchronous OpenAI API Calls** | `app/utilities/article_analyzer.py` | API calls to OpenAI are made synchronously, blocking the request thread and impacting user experience for longer operations. Asynchronous processing with async/await or a task queue is needed. |
+| 🟠 **Inefficient Article Extraction** | `app/utilities/article_extractor.py` | The current article extraction process tries multiple methods sequentially, which is slow and inefficient. Parallel extraction attempts, caching, and refined extraction algorithms would improve performance. |
+| 🟠 **SQLite for Production Use** | `app/config/config.py` | Using SQLite for production may not scale well. Consider migrating to a more robust database like PostgreSQL and implementing proper connection pooling. |
+| 🟠 **PDF Export Issues** | Export functionality | Users cannot view exported PDF analyses in Adobe Acrobat as the current PDF export implementation creates a text file with a .pdf extension instead of a properly formatted PDF file. |
+| 🟠 **Missing Environment Variable Handling** | Settings blueprint | Missing `update_env_file` function in settings blueprint preventing configuration updates through UI. |
+| 🟠 **Analysis Workflow Tests Failing** | Analysis blueprint | Multiple failures in the analysis blueprint tests affecting core functionality. |
+| 🟠 **Helper Function Inconsistencies** | Various utility functions | Functions like `format_timestamp`, `generate_slug`, `sanitize_filename` returning different values than expected. |
+
+### Medium Priority Issues
+
+| Issue | File | Description |
+|-------|------|-------------|
+| 🟡 **Migration Process for Large Databases** | `app/models/database.py` | While the database migration system works well for smaller databases, additional considerations are needed for very large databases, including batch processing, progress indicators, and pause/resume functionality. |
+| 🟡 **Backup Before Migration** | `app/models/database.py` | The current migration system doesn't automatically create backups before migration. Implementation of automatic database backup, restore options, and backup verification is needed. |
+| 🟡 **Insufficient Error Logging** | `app/utilities/logger.py` | The current logging implementation doesn't consistently capture context or stack traces. Enhancements are needed to include more context, request IDs, and potentially structured logging. |
+| 🟡 **Modal Refresh Confirmation Needs Improvement** | `templates/partials/analysis_result.html` | The refresh confirmation modal lacks clear feedback and error handling states. Proper error states, improved loading animations, and timeout handling are needed. |
+| 🟡 **Inconsistent UI Element Styling** | `static/css/styles.css` | The CSS has inconsistent naming patterns and potential specificity issues. Standardizing CSS naming conventions, reviewing CSS specificity, and possibly implementing a CSS preprocessor would improve maintainability. |
+| 🟡 **Missing Extraction Fallbacks** | `app/utilities/article_extractor.py` | Content extraction fails with "content too short" errors in several cases. More robust fallback mechanisms, support for different website types, and improved error handling are needed. |
+| 🟡 **Duplicate Date Formatting Logic** | `app/blueprints/main.py`, `app/blueprints/statistics.py` | Nearly identical code to convert string timestamps to datetime objects exists in multiple files, creating maintenance issues. |
+| 🟡 **Duplicate Model Price Normalization Logic** | `app/blueprints/statistics.py` | The same model price normalization logic is duplicated in both the `statistics()` and `refresh_statistics()` functions, increasing the risk of inconsistencies. |
+| 🟡 **Complex Environment Variable Processing** | `app/blueprints/settings.py` | The environment variable update function uses a complex approach to update the .env file and lacks comprehensive validation. |
+| 🟡 **Hardcoded Default Values** | `app/blueprints/analysis.py` | Default blocked domains are hardcoded when the block list can't be loaded, making maintenance difficult as blocked domains need to be updated. |
+| 🟡 **Remaining Embedded Styles** | `templates/partials/analysis_loading.html`, `templates/statistics.html` | Despite efforts to consolidate CSS, there are still embedded styles in these templates, making style maintenance more difficult and inconsistent. |
+| 🟡 **Inconsistent Modal Dialog Implementation** | Various template files | Different approaches to modal dialogs across templates make the codebase harder to maintain and result in inconsistent user experience. |
+| 🟡 **Direct DOM Style Manipulation** | `templates/partials/analysis_result.html` | JavaScript code directly manipulates DOM element styles instead of toggling CSS classes, creating tight coupling between JS and styling. |
+| 🟡 **Indicator Extractor Test Expectations** | Test files | Indicator extractor tests expect a combined 'hash' key for hash indicators, but implementation separates by type (md5, sha1, sha256). |
+| 🟡 **Error Handler Tests Failing** | Error handler | Custom error pages not working as expected, leading to poor user experience when errors occur. |
+| 🟡 **Export Functionality Partially Implemented** | Export functionality | PDF format exports are not properly formatted and cannot be opened in Adobe Acrobat. |
+| 🟡 **View Button for Individual Reports on History Page** | `history.html` | When clicking on the "View" button for any report on the history page, the user is simply redirected back to the home page, rather than being shown the requested report. |
+
+### Low Priority Issues
+
+| Issue | File | Description |
+|-------|------|-------------|
+| 🟢 **CVE Identifier Case Handling** | Test files | CVE identifier case handling in tests doesn't match implementation behavior. |
+| 🟢 **Whitespace Handling in Text Cleaning Function** | Text processing | The `clean_extracted_text` function behavior with whitespace doesn't match test expectations. |
+| 🟢 **Contact Form Validation Discrepancies** | Contact form | Tests expect 400 responses for invalid data but receiving 404. |
+| 🟢 **Text Truncation Inconsistencies** | Text utilities | Inconsistent truncation behavior with ellipsis causing minor display issues. |
+| 🟢 **History Page UI/UX** | `history.html` | Poor page formatting. |
+
+### Partially Resolved Issues
+
+| Issue | File | Current Status | Remaining Work |
+|-------|------|----------------|----------------|
+| ⚠️ **Insecure Debug Endpoint** | `app/blueprints/analysis.py` | Environment checks, basic token authentication, and audit logging have been added | Implement proper role-based access control, consider removing the endpoint entirely in favor of proper logging, add rate limiting to prevent abuse |
+| ⚠️ **Inconsistent Error Handling** | Various | Improved error handling in article_analyzer.py with better retry logic, enhanced error reporting for API operations, added self-validation for structured data, improved database error handling | Create custom exception classes for different error types, implement global error handling middleware |
 
 ## Resolved Issues
 
-### Version 1.0.1 (2025-03-22)
-- **Application Crash on Start**: Fixed initialization sequence to properly set up configuration before starting services
-- **Database Connection Failures**: Implemented more robust connection handling with proper error messages
-- **Missing Assets**: Added fallback for static assets when CDN resources are unavailable
-- **Memory Leaks**: Fixed resource cleanup in long-running processes
-- **API Rate Limiting**: Implemented proper backoff strategy for API calls 
-- **Template Rendering Error**: Resolved by adding compatibility with both variable names (`stats` and `token_stats`) in the statistics blueprint
-- **Statistics Page Error**: Fixed by implementing proper variable passing between routes and templates
-- **Failed Tests in Statistics Blueprint**: Resolved by improving the testing approach to focus on endpoint functionality without manipulating template rendering directly
-- **Indicator Extractor Test Failures**: Updated tests to use only public API functions and avoid internal validation functions
-- **Logger Module Testing Improvements**: Enhanced the test suite for comprehensive coverage of logging functions
+### Security Issues
 
-### Fixed in Version 1.0.1
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Lack of Input Validation** | `app/blueprints/analysis.py` | Added validators library for URL format validation, implemented allowed domain patterns, TLD validation, domain blocklist capability, protocol validation, and input sanitization. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Unsafe SQL Queries** | `app/models/database.py` | Created a database connection context manager, standardized parameterized queries, added centralized error handling and logging, implemented proper transaction management, and added a safe query execution utility function. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
+| ✅ **URL Validation Logic for Complex Domains** | URL handling | Enhanced URL validation logic to detect IP patterns in domains and improved TLD validation to handle complex domain structures. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
 
-**Statistics Page Error with Unknown Model Types**
-- **Issue:** The statistics page would crash with a jinja2.exceptions.UndefinedError when encountering models like 'gpt-3.5-turbo' that were not defined in the model_prices dictionary
-- **Impact:** Users experienced 500 errors when viewing the statistics page if they had used models not explicitly defined in the configuration
-- **Root Cause:** The templates did not check if a model_id existed in the model_prices dictionary before attempting to access it, and the normalize_model_id method was not handling all possible model variants
-- **Resolution:** Added error handling in templates to gracefully handle missing model pricing, updated the Config.normalize_model_id method to better handle various model versions, and added gpt-3.5-turbo pricing to the Config.get_model_prices method
+### Performance Issues
 
-### Text Parsing and Analysis
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Inefficient Token Usage Calculation** | `app/models/database.py` | Optimized database schema, created indexes for performance-critical columns, improved token tracking functionality, enhanced query performance, and implemented proper context manager for database connections. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Duplicate Shutdown Handlers** | `app/__init__.py`, `app/utilities/logger.py` | Fixed duplicate signal handler registrations, ensured the shutdown handler is only registered once, updated the registration function, and eliminated duplicate log messages. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Duplicate Initialization in Debug Mode** | `app/__init__.py`, `app/utilities/logger.py` | Added detection of Flask reloader vs worker processes, implemented skipping full initialization in the reloader process, added special handling for logger initialization, and created a dedicated debug server start function. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **CTRL+C Termination Issues** | `app/__init__.py`, `app/utilities/logger.py` | Enhanced signal handling for SIGINT, added special handling for Flask debug mode, implemented mechanisms to prevent duplicate shutdown messages, added proper cleanup in the shutdown sequence, and used appropriate sys.exit() calls. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
 
-### Text Parsing Reliability with Complex Formats (RESOLVED in version 1.1.0)
-- **Issue**: The regex-based parsing system to extract structured data from free-text OpenAI responses was fragile and could break with formatting changes.
-- **Cause**: Reliance on specific text patterns in AI-generated content for parsing.
-- **Resolution**: Implemented OpenAI's structured JSON responses feature, completely eliminating the need for regex-based parsing. The system now requests and receives properly structured JSON data directly from the API, making the analysis more reliable and robust.
-- **Status**: Fixed in version 1.1.0
+### Database Issues
 
-### OpenAI Structured Outputs API Parameter Mismatch
-- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "unexpected keyword argument 'max_tokens'"
-- **Root Cause**: The newer Structured Outputs API uses `max_output_tokens` parameter instead of `max_tokens`
-- **Resolution**: Updated the API call to use the correct parameter name
-- **Status**: Fixed in version 1.1.0
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Lack of Database Migrations** | Database functionality | Added proper database version tracking table, implemented structured migration system, created migration functions that preserve existing data, added automatic migration during startup, and improved error handling and logging. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Type Mismatch Errors in Database** | `logs/error.log` | Standardized database column types, added proper validation before storing data, fixed queries causing type mismatches, implemented more robust error handling, and added data validation functions. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Database Function Parameter Mismatch** | Database functions | Updated parameter names in function calls to match the expected parameter names in the implementation. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **History Page Database Query Issue** | `app/models/database.py` | Fixed get_recent_analyses function to properly handle None values for the limit parameter by modifying the SQL query to not include a LIMIT clause when limit is None. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Frontend UI Issues After Schema Migration** | HTML templates | Updated all HTML templates to reference the new data structure correctly, fixed conditional checks for data existence, improved error message displays, and fixed presentation of various data components. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
 
-### OpenAI Structured Outputs API Seed Parameter Issue
-- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "unexpected keyword argument 'seed'"
-- **Root Cause**: The newer Structured Outputs API doesn't support the `seed` parameter
-- **Resolution**: Removed the `seed` parameter from the API call
-- **Status**: Fixed in version 1.1.0
+### Configuration Issues
 
-### OpenAI Structured Outputs JSON Schema Issue
-- **Issue**: The API call to OpenAI's `responses.create()` failed with an error: "Invalid schema for response_format 'threat_intelligence_report': In context=(), 'additionalProperties' is required to be supplied and to be false."
-- **Root Cause**: The JSON schema for the Structured Outputs API requires "additionalProperties": false for all object types
-- **Resolution**: Added "additionalProperties": false to all object definitions in the JSON schema
-- **Status**: Fixed in version 1.1.0
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Inconsistent Environment Variable Usage** | `app/config/config.py` | Reorganized Config class with logical section headers, standardized environment variable naming and usage patterns, added comprehensive documentation, created detailed configuration section in README.md, and improved error handling. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
 
-### Backend Error Handling Improvement
-- **Issue**: When API or extraction errors occurred, users were presented with a basic error page that lacked context and helpful recovery options
-- **Root Cause**: The error templates and error handling code didn't provide sufficient user feedback
-- **Resolution**: Enhanced the error handling UI with more detailed error messages, error-specific suggestions, and retry options
-- **Status**: Fixed in version 1.1.0
+### UI/UX Issues
 
-## Current Issues
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Template Rendering Error in IOC Display** | `templates/partials/analysis_result.html` | Added custom Jinja2 filter 'zfill' to pad strings with zeros, updated template to correctly use the filter for MITRE technique IDs, and fixed rendering issues. | [1.0.0 Fixed](CHANGELOG.md#100---2025-02-15) |
+| ✅ **Inconsistent Header and Footer** | `templates/*.html` | Standardized header and footer structure, updated templates to use consistent Bootstrap components and classes, aligned Bootstrap versions, and ensured consistent icon usage. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Statistics Page Refresh Error** | `app/blueprints/statistics.py` | Updated the refresh function to handle model field naming correctly, fixed SQL queries, added consistent error handling, and enhanced the UI with proper loading indicators. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Inaccessible History Page** | `templates/*.html` | Added History links to navigation menus, ensured consistent navigation structure, activated the History blueprint, and updated all templates to include History in navigation and footer links. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Missing Template Variables Error** | `templates/partials/analysis_result.html` | Added null-safety checks to template variables, updated template rendering functions to consistently pass required variables, and fixed template rendering to handle undefined values. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Inconsistent CSS Styling Approach** | Various HTML templates | Moved all inline styles to the central stylesheet, removed embedded style tags, created semantic class names, added CSS best practices guidelines, and improved maintainability through centralized style definitions. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Inconsistent Error Display UI** | Error templates | Standardized all error displays to use the same modal popup style for consistent user experience. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
 
-### Test Failures
-- Multiple test failures in various modules due to API changes or implementation discrepancies
-- Helper function tests failing due to changes in expected behavior (`sanitize_filename`, `truncate_text`, `calculate_percentages`)
-- Main blueprint tests failing due to missing routes (`about`, `sitemap.xml`, `robots.txt`, `contact`)
-- Integration tests failing due to missing mock fixtures
-- Settings blueprint tests failing due to missing or incorrect implementation
+### API Integration Issues
 
-### Implementation Discrepancies
-- Database module location discrepancy: tests reference `app.utilities.database` but implementation uses `app.models.database`
-- Missing `update_env_file` and `read_env_file` functions in the settings blueprint
+| Issue | File | Resolution | Changelog Reference |
+|-------|------|------------|---------------------|
+| ✅ **Text Parsing Reliability with Complex Formats** | API integration | Implemented OpenAI's structured JSON responses feature, eliminating the need for regex-based parsing. | [1.1.0 Changed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **OpenAI Structured Outputs API Parameter Mismatch** | API calls | Updated API calls to use the correct parameter names (max_output_tokens instead of max_tokens). | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **OpenAI Structured Outputs API Seed Parameter Issue** | API calls | Removed the unsupported seed parameter from API calls. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **OpenAI Structured Outputs JSON Schema Issues** | API schema | Added required properties to the JSON schema and fixed syntax errors between JavaScript and Python boolean values. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Backend Error Handling Improvement** | Error handling | Enhanced error handling UI with more detailed error messages, error-specific suggestions, and retry options. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
+| ✅ **Server Error Display Enhancement** | Error handling | Added a custom Flask error handler for 500 errors that renders a helpful error template with error information and retry options. | [1.1.0 Fixed](CHANGELOG.md#110---2025-03-23) |
 
-### Export Functionality Issues
-- **Issue**: Adobe Acrobat cannot open exported PDF files
-  **Details**: Users encounter an error: "Adobe Acrobat could not open '<NAME>.pdf' because it is either not a supported file type or because the file has been damaged (for example, it was sent as an email attachment and wasn't correctly decoded)."
-  **Impact**: Users cannot view exported PDF analyses in Adobe Acrobat
-  **Root cause**: The current PDF export implementation creates a text file with a .pdf extension instead of a properly formatted PDF file
-  **Resolution needed**: Implement proper PDF generation using a library such as WeasyPrint or ReportLab
+## Issue vs. TODO Clarification
 
-Once decisions are made on these discrepancies, either the implementation will be updated to match the original test expectations, or the test changes will be finalized as the correct approach.
+This document focuses on **issues** (bugs, vulnerabilities, and problems with existing functionality) while the [TODO.md](TODO.md) document tracks **feature enhancements** and future development plans. Some items may appear similar but serve different purposes:
 
-### OpenAI Structured Outputs JSON Schema Python Syntax Error
-- **Issue**: The JSON schema for the OpenAI API was using JavaScript syntax (`false`) instead of Python syntax (`False`)
-- **Root Cause**: Python requires boolean values to be capitalized (`True`/`False`), while JSON uses lowercase (`true`/`false`)
-- **Resolution**: Changed all instances of lowercase `false` to uppercase `False` in the JSON schema definition
-- **Status**: Fixed in version 1.1.0
+- **Issues**: Problems with existing code that need to be fixed
+- **TODOs**: New features or enhancements that would improve the application
 
-### Server Error Display Enhancement
-- **Issue**: When server errors occurred (such as Python syntax errors), users were shown a generic 500 error page instead of a helpful error message
-- **Root Cause**: The application lacked a global error handler for 500 errors that would render our custom error template
-- **Resolution**: Added a custom Flask error handler for 500 errors that renders the `analysis_error.html` template with helpful error information and provides the option to retry
-- **Status**: Fixed in version 1.1.0
-
-### Resolved Issues
-
-#### OpenAI Structured Outputs API Issues
-
-- **Issue**: OpenAI API call failed with error: "In context=('properties', 'critical_sectors', 'items', 'properties', 'score'), 'minimum' is not permitted."
-- **Root Cause**: OpenAI's Structured Outputs JSON schema validation doesn't support the 'minimum' and 'maximum' properties for integer constraints.
-- **Resolution**: Removed the 'minimum' and 'maximum' properties from the schema definition and updated the description to include the valid range.
-- **Status**: Fixed in version 1.1.0.
-
-- **Issue**: HTMX error handling was not properly displaying backend errors in the frontend.
-- **Root Cause**: Missing error handling in the HTMX setup and inconsistent error properties in template rendering.
-- **Resolution**: Added HTMX error event handler to display error responses in the frontend and updated all error template renderings to include consistent error type and title information.
-- **Status**: Fixed in version 1.1.0.
-
-#### Database Function Parameter Mismatch
-
-- **Issue**: Store analysis database function failed with error: "store_analysis() got an unexpected keyword argument 'raw_text'".
-- **Root Cause**: Parameter name mismatch between what the function expected ('raw_analysis') and what was being passed ('raw_text').
-- **Resolution**: Updated the parameter name in the function call to match the expected parameter name.
-- **Status**: Fixed in version 1.1.0.
+For example, "PDF Export Issues" in this document refers to a bug where the current PDF export feature doesn't work correctly, while the "Fix PDF generation implementation" in TODO.md refers to the enhancement task to implement a fully-featured PDF export capability.

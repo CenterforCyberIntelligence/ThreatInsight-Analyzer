@@ -5,188 +5,187 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artificial Cyber Intelligence Analyst™ Settings</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Dynamic Heading Font -->
+    <link href="https://fonts.googleapis.com/css2?family={{ heading_font }}:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', t=current_time) }}">
+    <!-- CSS Variable for Font -->
+    <style>
+        :root {
+            --app-heading-font: '{{ heading_font }}';
+        }
+    </style>
     <!-- HTMX Library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
-    <header class="navbar">
-        <div class="container">
-            <div class="navbar-content">
-                <a href="/" class="logo">
-                    <i class="fas fa-shield-alt"></i>
-                    Center for Cyber Intelligence™ | 
-                    <span style="font-weight: 400; opacity: 0.8;">  Artificial Cyber Intelligence Analyst™</span>
-                </a>
-                <div class="model-badge">
-                    <i class="fas fa-brain"></i>
-                    Powered by OpenAI
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand cyber-brand" href="/">
+                <i class="bi bi-shield-lock-fill me-2"></i>
+                Center for Cyber Intelligence <span class="cyber-accent">Artificial Cyber Intelligence Analyst™</span>
+            </a>
+            <div class="d-flex">
+                <span class="powered-by-badge">
+                    <i class="bi bi-cpu-fill me-1"></i> Powered by OpenAI
+                </span>
+                <div class="navbar-nav">
+                    <a class="nav-link" href="/">Home</a>
+                    <a class="nav-link" href="/statistics">Statistics</a>
+                    <a class="nav-link" href="/history">History</a>
+                    <a class="nav-link active" href="/settings">Settings</a>
                 </div>
-                <nav class="nav-links">
-                    <a href="/" class="nav-link">Home</a>
-                    <a href="/statistics" class="nav-link">Statistics</a>
-                    <a href="/settings" class="nav-link active">Settings</a>
-                </nav>
+                <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="header-support-btn">
+                    <i class="bi bi-cup-hot-fill"></i>
+                    Support
+                </a>
             </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="htmx-indicator">
-        <div class="spinner-container">
+        <div class="spinner-container spinner-container-centered">
             <div class="spinner"></div>
         </div>
     </div>
 
-    <main class="main">
-        <div class="container">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-cog"></i> Analyzer Settings</h2>
-                    <p class="card-subtitle">Configure environment variables and manage database</p>
-                </div>
-                <div class="card-body">
-                    <div class="settings-section">
-                        <h3><i class="fas fa-sliders-h"></i> Environment Variables</h3>
-                        <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> Changes to environment variables will take effect after restarting the application.</p>
-                        
-                        <form id="env-form" 
-                              hx-post="/settings/update_env" 
-                              hx-target="#env-result"
-                              hx-indicator="#loading-indicator">
-                              
-                            <div class="form-group">
-                                <label for="OPENAI_API_KEY">OpenAI API Key:</label>
-                                <input type="password" id="OPENAI_API_KEY" name="OPENAI_API_KEY" class="form-control" 
-                                       value="{{ env_vars.OPENAI_API_KEY }}" autocomplete="off">
-                                <small class="form-text">Your OpenAI API key for authentication</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="OPENAI_MODEL">Default OpenAI Model:</label>
-                                <input type="text" id="OPENAI_MODEL" name="OPENAI_MODEL" class="form-control" 
-                                       value="{{ env_vars.OPENAI_MODEL }}">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="OPENAI_TEMPERATURE">OpenAI Temperature:</label>
-                                <input type="text" id="OPENAI_TEMPERATURE" name="OPENAI_TEMPERATURE" class="form-control" 
-                                       value="{{ env_vars.OPENAI_TEMPERATURE }}">
-                                <small class="form-text">Value between 0.0 and 1.0</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="OPENAI_MAX_TOKENS">OpenAI Max Tokens:</label>
-                                <input type="text" id="OPENAI_MAX_TOKENS" name="OPENAI_MAX_TOKENS" class="form-control" 
-                                       value="{{ env_vars.OPENAI_MAX_TOKENS }}">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="AVAILABLE_MODELS">Available Models (JSON):</label>
-                                <textarea id="AVAILABLE_MODELS" name="AVAILABLE_MODELS" class="form-control code-textarea" rows="8">{{ env_vars.AVAILABLE_MODELS }}</textarea>
-                                <small class="form-text">JSON format required</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="FLASK_HOST">Flask Host:</label>
-                                <input type="text" id="FLASK_HOST" name="FLASK_HOST" class="form-control" 
-                                       value="{{ env_vars.FLASK_HOST }}">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="FLASK_PORT">Flask Port:</label>
-                                <input type="text" id="FLASK_PORT" name="FLASK_PORT" class="form-control" 
-                                       value="{{ env_vars.FLASK_PORT }}">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="FLASK_DEBUG">Flask Debug Mode:</label>
-                                <select id="FLASK_DEBUG" name="FLASK_DEBUG" class="form-control">
-                                    <option value="1" {% if env_vars.FLASK_DEBUG == '1' %}selected{% endif %}>Enabled</option>
-                                    <option value="0" {% if env_vars.FLASK_DEBUG == '0' %}selected{% endif %}>Disabled</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <div class="form-group">
-                                    <label class="checkbox-container">
-                                        <input type="checkbox" id="should_restart" name="should_restart" value="true" checked>
-                                        <span class="checkmark"></span>
-                                        Restart server after saving changes
-                                    </label>
-                                    <small class="form-text">Changes will take effect immediately if server is restarted</small>
-                                </div>
-                                <button type="submit" class="button primary-button">
-                                    <i class="fas fa-save"></i> Save Changes
-                                </button>
-                            </div>
-                        </form>
-                        
-                        <div id="env-result" class="alert-container"></div>
-                    </div>
+    <div id="main-content" class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-cog"></i> Analyzer Settings</h2>
+                <p class="card-subtitle">Configure environment variables and manage database</p>
+            </div>
+            <div class="card-body">
+                <div class="settings-section">
+                    <h3><i class="fas fa-sliders-h"></i> Environment Variables</h3>
+                    <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> Changes to environment variables will take effect after restarting the application.</p>
                     
-                    <div class="settings-section danger-zone">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
-                        <div class="danger-card">
-                            <div class="danger-info">
-                                <h4>Purge Database</h4>
-                                <p>This will permanently delete all articles, analysis results, and token usage statistics. This action cannot be undone.</p>
+                    <form id="env-form" 
+                          hx-post="/settings/update_env" 
+                          hx-target="#env-result"
+                          hx-indicator="#loading-indicator">
+                          
+                        <div class="form-group">
+                            <label for="OPENAI_API_KEY">OpenAI API Key:</label>
+                            <input type="password" id="OPENAI_API_KEY" name="OPENAI_API_KEY" class="form-control" 
+                                   value="{{ env_vars.OPENAI_API_KEY }}" autocomplete="off">
+                            <small class="form-text">Your OpenAI API key for authentication</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="OPENAI_MODEL">Default OpenAI Model:</label>
+                            <input type="text" id="OPENAI_MODEL" name="OPENAI_MODEL" class="form-control" 
+                                   value="{{ env_vars.OPENAI_MODEL }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="OPENAI_TEMPERATURE">OpenAI Temperature:</label>
+                            <input type="text" id="OPENAI_TEMPERATURE" name="OPENAI_TEMPERATURE" class="form-control" 
+                                   value="{{ env_vars.OPENAI_TEMPERATURE }}">
+                            <small class="form-text">Value between 0.0 and 1.0</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="OPENAI_MAX_TOKENS">OpenAI Max Tokens:</label>
+                            <input type="text" id="OPENAI_MAX_TOKENS" name="OPENAI_MAX_TOKENS" class="form-control" 
+                                   value="{{ env_vars.OPENAI_MAX_TOKENS }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="AVAILABLE_MODELS">Available Models (JSON):</label>
+                            <textarea id="AVAILABLE_MODELS" name="AVAILABLE_MODELS" class="form-control code-textarea" rows="8">{{ env_vars.AVAILABLE_MODELS }}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="HEADING_FONT">Heading Font:</label>
+                            <select id="HEADING_FONT" name="HEADING_FONT" class="form-control">
+                                <option value="Rajdhani" {% if heading_font == 'Rajdhani' %}selected{% endif %}>Rajdhani (Default)</option>
+                                <option value="Orbitron" {% if heading_font == 'Orbitron' %}selected{% endif %}>Orbitron</option>
+                                <option value="Exo" {% if heading_font == 'Exo' %}selected{% endif %}>Exo</option>
+                                <option value="Quantico" {% if heading_font == 'Quantico' %}selected{% endif %}>Quantico</option>
+                                <option value="Share+Tech+Mono" {% if heading_font == 'Share+Tech+Mono' %}selected{% endif %}>Share Tech Mono</option>
+                                <option value="Audiowide" {% if heading_font == 'Audiowide' %}selected{% endif %}>Audiowide</option>
+                                <option value="JetBrains+Mono" {% if heading_font == 'JetBrains+Mono' %}selected{% endif %}>JetBrains Mono</option>
+                            </select>
+                            <small class="form-text">Select the font used for headings and titles throughout the application.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="FLASK_HOST">Flask Host:</label>
+                            <input type="text" id="FLASK_HOST" name="FLASK_HOST" class="form-control" 
+                                   value="{{ env_vars.FLASK_HOST }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="FLASK_PORT">Flask Port:</label>
+                            <input type="text" id="FLASK_PORT" name="FLASK_PORT" class="form-control" 
+                                   value="{{ env_vars.FLASK_PORT }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="FLASK_DEBUG">Flask Debug Mode:</label>
+                            <select id="FLASK_DEBUG" name="FLASK_DEBUG" class="form-control">
+                                <option value="1" {% if env_vars.FLASK_DEBUG == '1' %}selected{% endif %}>Enabled</option>
+                                <option value="0" {% if env_vars.FLASK_DEBUG == '0' %}selected{% endif %}>Disabled</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <div class="form-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="should_restart" name="should_restart" value="true" checked>
+                                    <span class="checkmark"></span>
+                                    Restart server after saving changes
+                                </label>
+                                <small class="form-text">Changes will take effect immediately if server is restarted</small>
                             </div>
-                            
-                            <button class="button danger-button"
-                                    onclick="document.getElementById('purge-confirmation-modal').style.display = 'flex'">
-                                <i class="fas fa-trash-alt"></i> Purge Database
+                            <button type="submit" class="button primary-button">
+                                <i class="fas fa-save"></i> Save Changes
                             </button>
                         </div>
-                    </div>
+                    </form>
+                    
+                    <div id="env-result" class="alert-container"></div>
                 </div>
-            </div>
-            
-            <!-- Database Statistics Card -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-database"></i> Database Statistics</h2>
-                </div>
-                <div class="card-body">
-                    <div class="stats-container">
-                        <div class="stat-item">
-                            <div class="stat-label">Total Articles</div>
-                            <div class="stat-value">{{ token_stats.overall.model_count }}</div>
+                
+                <div class="settings-section danger-zone">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+                    <div class="danger-card">
+                        <div class="danger-info">
+                            <h4>Purge Database</h4>
+                            <p>This will permanently delete all articles, analysis results, and token usage statistics. This action cannot be undone.</p>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Input Tokens</div>
-                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.total_input) }}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Output Tokens</div>
-                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.total_output) }}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Total Cached Tokens</div>
-                            <div class="stat-value">{{ '{:,}'.format(token_stats.overall.cached_input) }}</div>
-                        </div>
+                        
+                        <button class="button danger-button"
+                                onclick="document.getElementById('purge-confirmation-modal').style.display = 'flex'">
+                            <i class="fas fa-trash-alt"></i> Purge Database
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
     
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-copyright">
-                    <p>&copy; 2025 <a href="https://www.centerforcyberintelligence.org" target="_blank">Center for Cyber Intelligence</a>. All Rights Reserved.</p>
-                </div>
-                <div class="footer-links">
-                    <a href="/">Home</a>
-                    <a href="/statistics">Statistics</a>
-                    <a href="/settings">Settings</a>
-                </div>
-            </div>
+    <div class="footer-links">
+        <div class="footer-nav">
+            <a href="/">Home</a>
+            <a href="/statistics">Statistics</a>
+            <a href="/history">History</a>
+            <a href="/settings" class="active">Settings</a>
         </div>
-    </footer>
+        <div class="footer-info">
+            <span class="copyright">© 2025 Center for Cyber Intelligence</span>
+            <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="bmc-button">
+                <i class="bi bi-cup-hot-fill"></i>
+                Support This Project
+            </a>
+        </div>
+    </div>
     
     <!-- Database Purge Confirmation Modal (Hidden) -->
     <div id="purge-confirmation-modal" class="modal">
@@ -624,42 +623,7 @@
             transform: rotate(45deg);
         }
         
-        /* Footer styles */
-        .footer {
-            background-color: #2d3748;
-            color: #a0aec0;
-            padding: 1.5rem 0;
-            margin-top: 2rem;
-            border-top: 1px solid #4a5568;
-        }
-        
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .footer-copyright p {
-            margin: 0;
-            font-size: 0.875rem;
-        }
-        
-        .footer-links {
-            display: flex;
-            gap: 1.5rem;
-        }
-        
-        .footer-links a {
-            color: #a0aec0;
-            text-decoration: none;
-            font-size: 0.875rem;
-            transition: color 0.2s ease;
-        }
-        
-        .footer-links a:hover {
-            color: #e2e8f0;
-        }
+        /* Footer styles are now in the global CSS */
         
         .text-center {
             text-align: center;
@@ -778,5 +742,8 @@
             }
         });
     </script>
+    
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 
