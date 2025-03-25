@@ -1,7 +1,5 @@
-
-
 # Artificial Cyber Intelligence Analyst 
-[![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
+[![Version: 1.1.1](https://img.shields.io/badge/Version-1.1.1-brightgreen.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![AI Development Project](https://img.shields.io/badge/🤖_AI_Development-Project-blue.svg)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE.md)
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=CenterforCyberIntelligence.ThreatInsight-Analyzer)](https://github.com/CenterforCyberIntelligence/ThreatInsight-Analyzer)
@@ -30,6 +28,8 @@ A web-based tool that uses AI to aid in rapid summarization and analysis of cybe
   - [Environment Variable Configuration](#environment-variable-configuration)
 - [Available Models](#available-models)
 - [Running the Application](#running-the-application)
+  - [Flask Application](#flask-application)
+  - [Streamlit Application](#streamlit-application)
 - [Usage](#usage)
 - [Development Status](#development-status)
 - [Database Structure](#database-structure)
@@ -96,10 +96,11 @@ This project is in active development. Features are being implemented incrementa
 
 ## Version
 
-**Current Version:** 1.1.0
+**Current Version:** 1.1.1
 
 ### Version History
 
+- **1.1.1** (2024-03-21): Improved input sanitization, enhanced API response handling, fixed model selection issues, standardized error modals, and added security headers.
 - **1.1.0** (2025-03-23): Major refactoring to use OpenAI's structured JSON responses, improved error handling, added threat actor identification and intelligence gaps analysis, added historical analysis browsing capability.
 - **1.0.1**: Minor updates and bug fixes.
 - **1.0.0**: Initial release with core functionality.
@@ -225,6 +226,8 @@ The application supports various OpenAI models for analysis. The default model i
 
 ## Running the Application
 
+### Flask Application
+
 1. Activate the virtual environment
 ```bash
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -237,9 +240,39 @@ python run.py
 
 The application will be accessible at `http://localhost:5000` by default.
 
+### Streamlit Application
+
+The project also includes a Streamlit version which can be deployed to Streamlit Cloud or run locally.
+
+1. Activate the virtual environment
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+2. Install Streamlit requirements
+```bash
+pip install -r requirements-streamlit.txt
+```
+
+3. Run the Streamlit application
+```bash
+streamlit run streamlit_app.py
+```
+
+The Streamlit application will be accessible at `http://localhost:8501` by default.
+
+#### Deploying to Streamlit Cloud
+
+1. Push your code to a GitHub repository
+2. Visit [Streamlit Cloud](https://streamlit.io/cloud)
+3. Connect your GitHub account and select the repository
+4. Set the main file path to `streamlit_app.py`
+5. Configure your OpenAI API key as a secret named `OPENAI_API_KEY`
+6. Deploy the application
+
 ## Usage
 
-1. Open the application in your browser (default: http://localhost:5000)
+1. Open the application in your browser (default: http://localhost:5000 for Flask, http://localhost:8501 for Streamlit)
 2. Enter a URL to a cybersecurity article
 3. Select the appropriate OpenAI model for analysis
 4. View the comprehensive threat intelligence report
@@ -281,6 +314,12 @@ The application uses a SQLite database to store analysis results and metadata. T
 - Ensure that your OpenAI API key is kept secure and not exposed in the code or version control system.
 - The application includes a domain blocking system to prevent analysis of known malicious or phishing websites. Blocked domains are stored in `app/data/blocked_domains.txt`.
 - The application uses environment variables for configuration, which can be set in a `.env` file in the project root.
+- Comprehensive input sanitization is implemented via the `sanitize_input` utility function in `app/utilities/sanitizers.py`, which protects against XSS, SQL injection, and other common web application vulnerabilities by:
+  - Decoding URL-encoded input
+  - Removing NULL bytes
+  - HTML entity encoding to prevent script execution
+  - Type preservation for non-string inputs
+- URL validation includes checks for proper format, allowed protocols (HTTP/HTTPS only), domain blocklisting, and HTTP 200 response validation to ensure the URL is accessible before processing.
 
 ## Testing
 

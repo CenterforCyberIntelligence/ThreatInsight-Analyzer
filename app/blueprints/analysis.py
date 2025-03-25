@@ -5,6 +5,7 @@ import re
 import traceback
 import validators
 import html
+import requests
 from typing import Dict, Any, Optional, Tuple, List
 from urllib.parse import urlparse
 from datetime import datetime
@@ -17,7 +18,8 @@ from app.utilities.export import (
     export_analysis_as_markdown, export_analysis_as_pdf
 )
 from app.utilities.logger import get_logger, print_status, error, warning, info, debug
-from app.models.database import store_analysis, update_analysis, get_analysis_by_url, track_token_usage, store_indicators, get_indicators_by_url
+from app.utilities.sanitizers import sanitize_input
+from app.models.database import store_analysis, update_analysis, get_analysis_by_url, track_token_usage, store_indicators, get_indicators_by_url, get_indicators_by_article_id
 from app.config.config import Config
 
 analysis_bp = Blueprint('analysis', __name__)
@@ -69,8 +71,20 @@ def validate_url(url: str) -> Tuple[bool, Optional[str]]:
     if not url:
         return False, "URL is required"
     
-    # Basic sanitization - strip whitespace and encode HTML entities
+    # Basic sanitization - strip whitespace
     url = url.strip()
+    
+    # Look for signs of tampering or encoding evasion
+    if '%' in url:
+        # Check for suspicious double-encoding patterns
+        suspicious_patterns = ['%25', '%26', '%3C', '%3E', '%27', '%22', '%00']
+        for pattern in suspicious_patterns:
+            if pattern in url:
+                return False, f"Suspicious URL encoding detected ({pattern})"
+    
+    # Check for NULL bytes which may indicate tampering
+    if '\0' in url:
+        return False, "NULL bytes are not allowed in URLs"
     
     # Basic URL validation using validators package
     if not validators.url(url):
@@ -82,6 +96,24 @@ def validate_url(url: str) -> Tuple[bool, Optional[str]]:
     # Protocol check - only allow HTTP and HTTPS
     if parsed_url.scheme not in ['http', 'https']:
         return False, "Only HTTP and HTTPS protocols are supported"
+    
+    # Check if URL returns a 200 response
+    try:
+        # Make a HEAD request to avoid downloading the entire page content
+        response = requests.head(url, timeout=10, allow_redirects=True)
+        
+        # If HEAD is not supported by the server, try a limited GET request
+        if response.status_code >= 400:
+            response = requests.get(url, timeout=10, stream=True, allow_redirects=True)
+            # Close the connection without downloading the entire content
+            if hasattr(response, 'close'):
+                response.close()
+        
+        status_code = response.status_code
+        if status_code != 200:
+            return False, f"URL returned a non-200 status code: {status_code}"
+    except requests.exceptions.RequestException as e:
+        return False, f"Failed to connect to URL: {str(e)}"
     
     # Extract domain and TLD
     domain = parsed_url.netloc.lower()
@@ -117,30 +149,59 @@ def validate_url(url: str) -> Tuple[bool, Optional[str]]:
         warning(f"Error in TLD validation: {str(e)}")
         return False, "Invalid domain format"
     
+    # Check for overly complex URLs that might indicate evasion attempts
+    if len(url) > 2000:
+        return False, "URL exceeds maximum allowed length"
+        
+    if url.count('?') > 1 or url.count('#') > 1:
+        return False, "URL contains multiple query or fragment parts"
+    
+    # Check for unusual character sequences that might indicate evasion
+    unusual_sequences = ['../', '.\\', './\\', '\\\\', '///', '&#']
+    for seq in unusual_sequences:
+        if seq in url:
+            return False, f"URL contains suspicious character sequence: {seq}"
+    
     return True, None
 
 @analysis_bp.route('/analyze', methods=['POST'])
 def analyze():
     """
-    Endpoint that handles article analysis requests.
-    Accepts a URL and model selection.
-    With HTMX, returns an HTML fragment for loading status.
+    Endpoint for initiating the analysis of a URL.
+    Two modes:
+    1. HTMX request: Return loading template with progressive updates
+    2. Regular request: Return JSON response
     """
-    # Get and sanitize URL
-    url = request.form.get('url', '')
+    # Get the raw URL from form data
+    raw_url = request.form.get('url', '')
     
-    # Validate URL
+    # Sanitize the input first
+    url = sanitize_input(raw_url)
+    
+    # Validate URL after sanitization
     is_valid, error_message = validate_url(url)
     if not is_valid:
-        return render_template('partials/analysis_error.html', 
-                            error=error_message,
-                            error_type='extraction',
-                            error_title='URL Validation Error',
-                            url=url,
-                            model=html.escape(request.form.get('model', Config.get_default_model()))), 400
+        if request.headers.get('HX-Request') == 'true':
+            return render_template('partials/analysis_error.html', 
+                                  error=error_message,
+                                  error_type='validation',
+                                  error_title='URL Validation Error'), 400
+        else:
+            return jsonify({'status': 'error', 'error': error_message}), 400
     
-    # Get selected model from form or use default (sanitize input)
-    selected_model = html.escape(request.form.get('model', Config.get_default_model()))
+    # Check if sanitized URL is different from raw URL (indicates potential tampering)
+    if url != raw_url and raw_url.find('%00') >= 0:
+        error_message = "Potentially malicious URL detected (contains NULL bytes)"
+        if request.headers.get('HX-Request') == 'true':
+            return render_template('partials/analysis_error.html', 
+                                  error=error_message,
+                                  error_type='validation',
+                                  error_title='Security Warning'), 400
+        else:
+            return jsonify({'status': 'error', 'error': error_message}), 400
+    
+    # Get selected model from form or use default
+    selected_model = sanitize_input(request.form.get('model', Config.DEFAULT_MODEL))
     print_status(f"User selected model: {selected_model}")
     
     # Check if this is an HTMX request 
@@ -162,9 +223,13 @@ def analysis_status():
     Endpoint to check the status of an ongoing analysis.
     Used by HTMX for step-by-step loading updates.
     """
-    url = request.args.get('url', '')
+    # Get the raw URL from query parameters
+    raw_url = request.args.get('url', '')
     
-    # Validate URL
+    # Sanitize the input first
+    url = sanitize_input(raw_url)
+    
+    # Validate URL after sanitization
     is_valid, error_message = validate_url(url)
     if not is_valid:
         return render_template('partials/analysis_error.html', 
@@ -172,10 +237,22 @@ def analysis_status():
                               error_type='extraction',
                               error_title='URL Validation Error',
                               url=url,
-                              model=html.escape(request.args.get('model', Config.get_default_model()))), 400
+                              model=sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))), 400
     
-    step = html.escape(request.args.get('step', 'extract'))
-    model = html.escape(request.args.get('model', Config.get_default_model()))
+    # Check if sanitized URL is different from raw URL (indicates potential tampering)
+    if url != raw_url and raw_url.find('%00') >= 0:
+        error_message = "Potentially malicious URL detected (contains NULL bytes)"
+        return render_template('partials/analysis_error.html', 
+                              error=error_message,
+                              error_type='validation',
+                              error_title='Security Warning',
+                              url=url,
+                              model=sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))), 400
+    
+    step = sanitize_input(request.args.get('step', 'extract'))
+    
+    # IMPORTANT: Don't transform the model ID - keep it exactly as received
+    model = sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))
     
     print_status(f"Analysis status check: URL={url}, Step={step}, Model={model}")
     
@@ -193,164 +270,190 @@ def analysis_result():
     Used by HTMX after all loading steps are complete.
     Can also be directly accessed to retrieve cached results.
     """
-    url = request.args.get('url', '')
+    # Get the raw URL from query parameters
+    raw_url = request.args.get('url', '')
     
-    # Validate URL
+    # Sanitize the input first
+    url = sanitize_input(raw_url)
+    
+    # Validate URL after sanitization
     is_valid, error_message = validate_url(url)
     if not is_valid:
         return render_template('partials/analysis_error.html', 
-                              error=error_message), 400
+                              error=error_message,
+                              error_type='validation',
+                              error_title='URL Validation Error',
+                              url=url), 400
     
-    model = html.escape(request.args.get('model', Config.get_default_model()))
+    # Check if sanitized URL is different from raw URL (indicates potential tampering)
+    if url != raw_url and raw_url.find('%00') >= 0:
+        error_message = "Potentially malicious URL detected (contains NULL bytes)"
+        return render_template('partials/analysis_error.html', 
+                              error=error_message,
+                              error_type='validation',
+                              error_title='Security Warning',
+                              url=url), 400
+    
+    # IMPORTANT: Don't transform the model ID - keep it exactly as received
+    model = sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))
     print_status(f"Analysis result request: URL={url}, Model={model}")
     
-    # Check cache for existing analysis
-    existing_analysis = get_analysis_by_url(url)
-    if existing_analysis:
-        print_status(f"Found existing analysis for {url}, using cached results with model: {existing_analysis['model']}")
-        
-        # Track token usage for cached result (estimate input tokens)
-        estimated_input_tokens = len(existing_analysis['raw_text']) // 4
-        track_token_usage(existing_analysis['model'], estimated_input_tokens, 0, cached=True)
-        
-        # Prepare API details for template
-        cached_api_details = {
-            "request": {
-                "model": existing_analysis["model"],
-                "tokens": {
-                    "prompt": estimated_input_tokens,
-                    "completion": 0,
-                    "total": estimated_input_tokens
-                }
-            },
-            "response": {
-                "model": existing_analysis["model"],
-                "cache_hit": True
-            }
-        }
-        
-        # Format analyzed_at timestamp
-        analyzed_at = "Unknown time"
-        if existing_analysis['created_at']:
-            try:
-                # Try to parse ISO format timestamp
-                from datetime import datetime
-                dt = datetime.fromisoformat(existing_analysis['created_at'])
-                analyzed_at = dt.strftime('%B %d, %Y at %H:%M')
-            except:
-                # If parsing fails, use the original format
-                analyzed_at = existing_analysis['created_at']
-        
-        return render_template('partials/analysis_result.html',
-                              url=url,
-                              model=existing_analysis['model'],
-                              analysis=existing_analysis['raw_text'],
-                              structured_analysis=existing_analysis['structured_data'],
-                              content_length=existing_analysis['content_length'],
-                              extraction_time=existing_analysis.get('extraction_time', 0),
-                              analysis_time=existing_analysis.get('analysis_time', 0),
-                              api_details=cached_api_details,
-                              cached=True,
-                              analyzed_at=analyzed_at)
-    
     try:
-        # Extract article content
-        print_status(f"Starting new analysis flow: URL={url}, Model={model}")
-        print_status(f"Web request: Starting extraction from {url}")
-        extraction_start = time.time()
-        article_content = extract_article_content(url, verbose=True)
-        extraction_time = time.time() - extraction_start
+        # Check if we have a cached analysis
+        cached_analysis = get_analysis_by_url(url)
         
-        if not article_content or len(article_content) < 100:
-            print_status(f"Web request: Extraction failed or content too short", is_error=True)
-            return render_template('partials/analysis_error.html',
-                                  error='Failed to extract meaningful content from the article. Please check the URL and try again.',
-                                  error_type='extraction',
-                                  error_title='Content Extraction Error',
+        if cached_analysis:
+            # Return cached results
+            print_status(f"Retrieved cached analysis for URL: {url}")
+            
+            # Extract data needed for indicators
+            article_id = cached_analysis.get('id', None)
+            
+            # Check if the cached analysis has already extracted indicators
+            has_indicators = False
+            if article_id:
+                indicators = get_indicators_by_article_id(article_id)
+                has_indicators = any(len(indicators[key]) > 0 for key in indicators)
+            
+            # Process and extract indicators of compromise if needed
+            if not has_indicators and article_id:
+                print_status(f"Extracting indicators for article ID: {article_id}")
+                article_content = cached_analysis.get('raw_text', '')
+                
+                if article_content:
+                    # Extract and store indicators
+                    extracted_indicators = extract_indicators(article_content)
+                    store_indicators(article_id, extracted_indicators)
+                    
+                    # Format for display
+                    indicators = format_indicators_for_display(extracted_indicators)
+                else:
+                    indicators = {}
+            elif has_indicators:
+                # Format existing indicators for display
+                indicators = format_indicators_for_display(indicators)
+            else:
+                indicators = {}
+            
+            structured_data = cached_analysis.get('structured_data', {})
+            
+            # Log final variables being sent to template
+            print("========== TEMPLATE VARIABLES ==========")
+            print(f"URL: {url}")
+            print(f"Model: {model}")
+            print(f"Result type: {type(cached_analysis.get('raw_text', ''))}")
+            print(f"Structured data type: {type(cached_analysis.get('structured_data', {}))}")
+            print("========================================")
+            
+            return render_template('partials/analysis_result.html',
                                   url=url,
-                                  model=model), 400
-        
-        # Analyze content with selected model
-        print_status(f"Web request: Starting analysis using model: {model}")
-        analysis_start = time.time()
-        analysis_result = analyze_article(article_content, url, model=model, verbose=True, structured=True, extract_iocs=True)
-        analysis_time = time.time() - analysis_start
-        
-        if not analysis_result:
-            print_status(f"Web request: Analysis failed with model {model}", is_error=True)
-            return render_template('partials/analysis_error.html',
-                                  error='Analysis failed. The OpenAI API may be experiencing issues.',
-                                  error_type='openai_api',
-                                  error_title='OpenAI API Error',
-                                  url=url,
-                                  model=model), 500
-        
-        # Get indicators from the result or extract them if missing
-        indicators = None
-        if "extracted_indicators" in analysis_result and analysis_result["extracted_indicators"]:
-            indicators = format_indicators_for_display(analysis_result["extracted_indicators"])
-            print_status(f"Web request: {indicators['total_count']} indicators extracted from article")
-        
-        # Store analysis in database for future retrieval
-        store_analysis(
-            url=url,
-            title=url,  # Using URL as title since we don't have a better title available here
-            model=model,
-            raw_analysis=analysis_result["text"],
-            structured_analysis=analysis_result["structured"],
-            content_length=len(article_content),
-            extraction_time=extraction_time,
-            analysis_time=analysis_time
-        )
-        
-        # Prepare API details for template
-        api_details = analysis_result.get("api_details", None)
-        
-        # Log detailed information about what we're sending to the template
-        import json
-        info("=========== ANALYSIS DATA SENT TO TEMPLATE ===========")
-        info(f"Raw analysis text type: {type(analysis_result['text'])}")
-        info(f"Raw analysis text length: {len(analysis_result['text'])}")
-        info(f"Raw analysis text sample: {analysis_result['text'][:500]}...")
-        info(f"Structured data keys: {list(analysis_result['structured'].keys())}")
-        info("=========== END ANALYSIS DATA DETAILS ===========")
-        
-        # Return the analysis result template
-        return render_template('partials/analysis_result.html',
-                              url=url,
-                              model=model,
-                              analysis=analysis_result["text"],
-                              structured_analysis=analysis_result["structured"],
-                              content_length=len(article_content),
-                              extraction_time=extraction_time,
-                              analysis_time=analysis_time,
-                              api_details=api_details,
-                              cached=False,
-                              analyzed_at="Just now")
+                                  model=cached_analysis.get('model', model),
+                                  result=cached_analysis.get('raw_text', ''),
+                                  structured_data=structured_data,
+                                  indicators=indicators,
+                                  created_at=cached_analysis.get('created_at', ''),
+                                  is_cached=True)
+        else:
+            # No cached analysis, start a new one
+            print_status(f"Starting new analysis flow: URL={url}, Model={model}")
+            
+            # Begin extraction process
+            print_status(f"Web request: Starting extraction from {url}")
+            article_data = extract_article_content(url, verbose=True)
+            
+            if not article_data:
+                return render_template('partials/analysis_error.html',
+                                      error="Failed to extract content from the provided URL.",
+                                      error_type="extraction"), 500
+            
+            # Handle different return types from extract_article_content
+            if isinstance(article_data, str):
+                article_content = article_data
+                article_title = url
+                extraction_time = 0
+            else:
+                article_content = article_data.get('content', '')
+                article_title = article_data.get('title', '')
+                extraction_time = article_data.get('extraction_time', 0)
+            
+            if not article_content:
+                return render_template('partials/analysis_error.html',
+                                      error="No content could be extracted from the URL.",
+                                      error_type="empty_content"), 500
+            
+            # Begin analysis process
+            print_status(f"Web request: Starting analysis using model: {model}")
+            analysis_start = time.time()
+            
+            try:
+                analysis_result = analyze_article(article_content, url, model=model, verbose=True, structured=True, extract_iocs=True)
+                analysis_time = time.time() - analysis_start
+                
+                # Store the results
+                store_analysis(
+                    url=url,
+                    title=article_title,
+                    content_length=len(article_content),
+                    extraction_time=extraction_time,
+                    analysis_time=analysis_time,
+                    model=model,
+                    raw_analysis=analysis_result.get('text', ''),
+                    structured_analysis=analysis_result.get('structured', {})
+                )
+                
+                # Get the article ID
+                new_analysis = get_analysis_by_url(url)
+                article_id = new_analysis.get('id') if new_analysis else None
+                
+                # Extract and store indicators if we have an article ID
+                indicators = {}
+                if article_id:
+                    extracted_indicators = extract_indicators(article_content)
+                    store_indicators(article_id, extracted_indicators)
+                    indicators = format_indicators_for_display(extracted_indicators)
+                
+                # Log final variables being sent to template
+                print("========== TEMPLATE VARIABLES ==========")
+                print(f"URL: {url}")
+                print(f"Model: {model}")
+                print(f"Result type: {type(analysis_result.get('text', ''))}")
+                print(f"Structured data type: {type(analysis_result.get('structured', {}))}")
+                print(f"API details: {analysis_result.get('api_details', {})}")
+                print("========================================")
+                
+                return render_template('partials/analysis_result.html',
+                                      url=url,
+                                      model=model,
+                                      result=analysis_result.get('text', ''),
+                                      structured_data=analysis_result.get('structured', {}),
+                                      indicators=indicators,
+                                      api_details=analysis_result.get('api_details', {}),
+                                      created_at=datetime.utcnow().isoformat(),
+                                      is_cached=False)
+            
+            except Exception as e:
+                error_message = str(e)
+                print_status(f"Error in analysis_result: {error_message}", is_error=True)
+                
+                # Log the traceback for debugging
+                error(traceback.format_exc())
+                
+                return render_template('partials/analysis_error.html',
+                                      error=error_message,
+                                      error_type="analysis",
+                                      error_title="Analysis Error"), 500
     
     except Exception as e:
-        error(f"Error in analysis_result: {str(e)}")
-        import traceback
+        error_message = str(e)
+        print_status(f"Unhandled error in analysis_result: {error_message}", is_error=True)
+        
+        # Log the traceback for debugging
         error(traceback.format_exc())
         
-        # Determine error type from exception
-        error_type = 'unknown'
-        error_title = 'Unexpected Error'
-        
-        if 'openai' in str(e).lower() or 'api' in str(e).lower():
-            error_type = 'openai_api'
-            error_title = 'OpenAI API Error'
-        elif 'extraction' in str(e).lower() or 'url' in str(e).lower() or 'http' in str(e).lower():
-            error_type = 'extraction'
-            error_title = 'Content Extraction Error'
-        
         return render_template('partials/analysis_error.html',
-                              error=f'Error during analysis: {str(e)}',
-                              error_type=error_type,
-                              error_title=error_title,
-                              url=url,
-                              model=model,
-                              details=traceback.format_exc() if os.getenv('FLASK_DEBUG') == '1' else None), 500
+                              error=error_message,
+                              error_type="general",
+                              error_title="System Error"), 500
 
 @analysis_bp.route('/recent-analyses', methods=['GET'])
 def recent_analyses():
@@ -392,13 +495,13 @@ def debug_raw_json():
         return jsonify({"error": "This endpoint is only available in development mode"}), 403
     
     # Basic authentication check - in a real implementation, this would use proper authentication
-    auth_token = request.args.get('auth_token', '')
+    auth_token = sanitize_input(request.args.get('auth_token', ''))
     admin_token = Config.ADMIN_DEBUG_TOKEN
     
     if not admin_token or auth_token != admin_token:
         return jsonify({"error": "Authentication required"}), 401
     
-    url = request.args.get('url', '')
+    url = sanitize_input(request.args.get('url', ''))
     
     if not url:
         return jsonify({"error": "No URL provided"}), 400
@@ -454,9 +557,13 @@ def refresh_analysis():
     Endpoint to refresh/reanalyze a previously analyzed URL.
     Bypasses cache and forces a new analysis using the latest processing techniques.
     """
-    url = request.args.get('url', '')
+    # Get the raw URL from query parameters
+    raw_url = request.args.get('url', '')
     
-    # Validate URL
+    # Sanitize the input first
+    url = sanitize_input(raw_url)
+    
+    # Validate URL after sanitization
     is_valid, error_message = validate_url(url)
     if not is_valid:
         return render_template('partials/analysis_error.html', 
@@ -464,9 +571,19 @@ def refresh_analysis():
                               error_type='extraction',
                               error_title='URL Validation Error',
                               url=url,
-                              model=html.escape(request.args.get('model', Config.get_default_model()))), 400
+                              model=sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))), 400
     
-    model = html.escape(request.args.get('model', Config.get_default_model()))
+    # Check if sanitized URL is different from raw URL (indicates potential tampering)
+    if url != raw_url and raw_url.find('%00') >= 0:
+        error_message = "Potentially malicious URL detected (contains NULL bytes)"
+        return render_template('partials/analysis_error.html', 
+                              error=error_message,
+                              error_type='validation',
+                              error_title='Security Warning',
+                              url=url,
+                              model=sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))), 400
+    
+    model = sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))
     print_status(f"Refreshing analysis for URL={url} with Model={model}")
     
     # Check cache for existing analysis to maintain original creation date
@@ -481,8 +598,14 @@ def refresh_analysis():
         print_status(f"Starting refresh analysis: URL={url}, Model={model}")
         print_status(f"Web request: Starting extraction from {url}")
         extraction_start = time.time()
-        article_content = extract_article_content(url, verbose=True)
+        article_data = extract_article_content(url, verbose=True)
         extraction_time = time.time() - extraction_start
+        
+        # Handle different return types from extract_article_content
+        if isinstance(article_data, str):
+            article_content = article_data
+        else:
+            article_content = article_data.get('content', '') if article_data else ''
         
         if not article_content or len(article_content) < 100:
             print_status(f"Web request: Extraction failed or content too short", is_error=True)
@@ -528,129 +651,51 @@ def refresh_analysis():
         # Get API details if available
         api_details = analysis_result.get("api_details", None)
         
-        # Extract missing summary if needed
-        if not analysis_result["structured"]["summary"]:
-            print_status(f"Web request: Summary is missing, attempting to extract from raw text", is_error=True)
-            summary_match = re.search(r'1\.\s*Summary of Article\s*(.*?)(?=2\.\s*Source Evaluation|\Z)', analysis_result["text"], re.DOTALL)
-            if summary_match:
-                analysis_result["structured"]["summary"] = summary_match.group(1).strip()
-
-        # Extract missing MITRE techniques if needed
-        if not analysis_result["structured"]["mitre_techniques"]:
-            print_status(f"Web request: MITRE techniques are missing, attempting to extract from raw text", is_error=True)
-            mitre_section = re.search(r'(?:3\.\s*)?MITRE\s+ATT&CK\s+Techniques:?(.*?)(?=(?:4\.\s*)?Key\s+Threat\s+Intelligence|\Z)', analysis_result["text"], re.DOTALL | re.IGNORECASE)
-            if mitre_section:
-                mitre_text = mitre_section.group(1).strip()
-                print_status(f"Found MITRE section text: {mitre_text[:200]}...")
-                
-                if mitre_text and not any(x in mitre_text.lower() for x in ['n/a', 'none', 'not applicable']):
-                    from app.utilities.article_analyzer import parse_mitre_technique
-                    
-                    # First try numbered list format (most common)
-                    mitre_items = re.findall(r'(?:^|\n)\d+\.\s*([Tt]\d+(?:\.\d+)?)\s*(?:-|:)\s*([^:]+?)(?::|(?:\s*-\s*))?\s*(.*?)(?=(?:\n\d+\.)|$)', mitre_text, re.DOTALL)
-                    
-                    # If no results, try alternative formats
-                    if not mitre_items:
-                        print_status("First MITRE extraction pattern failed, trying alternative pattern")
-                        mitre_items = re.findall(r'(?:^|\n)(?:\d+\.|-)?\s*(?:\*\*)?([Tt]\d+(?:\.\d+)?)(?:\*\*)?\s*(?:-|:|–)\s*(?:\*\*)?([^:\n]+?)(?:\*\*)?(?::|(?:\s*-\s*))?\s*(.*?)(?=(?:\n(?:\d+\.|-))|$)', mitre_text, re.DOTALL)
-                    
-                    # Log what we found
-                    print_status(f"Found {len(mitre_items)} MITRE techniques")
-                    
-                    for item in mitre_items:
-                        technique_id = item[0].strip() if item[0] else ""
-                        technique_name = item[1].strip() if len(item) > 1 else ""
-                        technique_desc = item[2].strip() if len(item) > 2 else ""
-                        
-                        print_status(f"MITRE technique parsed: ID={technique_id}, Name={technique_name}")
-                        
-                        if technique_id:  # Only add if we have at least an ID
-                            analysis_result["structured"]["mitre_techniques"].append({
-                                "id": technique_id,
-                                "name": technique_name,
-                                "description": technique_desc
-                            })
-
-        # Extract missing key insights if needed
-        if not analysis_result["structured"]["key_insights"]:
-            print_status(f"Web request: Key insights are missing, attempting to extract from raw text", is_error=True)
-            insights_section = re.search(r'4\.\s*Key Threat Intelligence Insights:(.*?)(?=5\.\s*Potential Bias or Issues|\Z)', analysis_result["text"], re.DOTALL)
-            if insights_section:
-                insights_text = insights_section.group(1).strip()
-                # Extract numbered items
-                insights = re.findall(r'(?:^|\n)\d+\.\s*(.*?)(?=(?:\n\d+\.)|$)', insights_text, re.DOTALL)
-                analysis_result["structured"]["key_insights"] = [insight.strip() for insight in insights if insight.strip()]
-
-        # Extract missing potential issues if needed
-        if not analysis_result["structured"]["potential_issues"]:
-            print_status(f"Web request: Potential issues are missing, attempting to extract from raw text", is_error=True)
-            issues_section = re.search(r'5\.\s*Potential Bias or Issues:(.*?)(?=6\.\s*Relevance to U\.S\. Government|\Z)', analysis_result["text"], re.DOTALL)
-            if issues_section:
-                issues_text = issues_section.group(1).strip()
-                # Extract numbered items
-                issues = re.findall(r'(?:^|\n)\d+\.\s*(.*?)(?=(?:\n\d+\.)|$)', issues_text, re.DOTALL)
-                analysis_result["structured"]["potential_issues"] = [issue.strip() for issue in issues if issue.strip()]
-
-        # Generate title from summary
-        title = url
-        if analysis_result["structured"]["summary"]:
-            first_sentence = analysis_result["structured"]["summary"].split('.')[0]
-            if len(first_sentence) > 10:
-                title = first_sentence[:100] + ('...' if len(first_sentence) > 100 else '')
-
-        # Log the final result with model information
-        print_status(f"Analysis complete: URL={url}, Model={model}, Content Length={len(article_content)}")
-
-        # Store analysis in database
-        store_success = store_analysis(
-            url=url,
-            title=title,
-            content_length=len(article_content),
-            extraction_time=extraction_time,
-            analysis_time=analysis_time,
-            model=model,
-            raw_analysis=analysis_result["text"],
-            structured_analysis=analysis_result["structured"]
-        )
+        # Log detailed information about what we're sending to the template
+        import json
+        info("=========== ANALYSIS DATA SENT TO TEMPLATE ===========")
+        info(f"Raw analysis text type: {type(analysis_result['text'])}")
+        info(f"Raw analysis text length: {len(analysis_result['text'])}")
+        info(f"Raw analysis text sample: {analysis_result['text'][:500]}...")
+        info(f"Structured data keys: {list(analysis_result['structured'].keys())}")
+        info("=========== END ANALYSIS DATA DETAILS ===========")
         
-        # Get the newly stored article ID
-        if store_success:
-            stored_article = get_analysis_by_url(url)
-            if stored_article and 'id' in stored_article and 'extracted_indicators' in analysis_result:
-                article_id = stored_article['id']
-                # Store extracted indicators
-                if analysis_result['extracted_indicators']:
-                    print_status(f"Storing extracted indicators for article_id: {article_id}")
-                    store_success = store_indicators(article_id, analysis_result['extracted_indicators'])
-                    if store_success:
-                        print_status(f"Successfully stored indicators for article_id: {article_id}")
-                    else:
-                        print_status(f"Failed to store indicators for article_id: {article_id}", is_error=True)
-
+        # Return the analysis result template
         return render_template('partials/analysis_result.html',
-                             url=url,
-                             model=model,
-                             analysis=analysis_result["text"],
-                             structured_analysis=analysis_result["structured"],
-                             content_length=len(article_content),
-                             extraction_time=extraction_time,
-                             analysis_time=analysis_time,
-                             api_details=api_details,
-                             cached=False)
-        
+                              url=url,
+                              model=model,
+                              analysis=analysis_result["text"],
+                              structured_analysis=analysis_result["structured"],
+                              content_length=len(article_content),
+                              extraction_time=extraction_time,
+                              analysis_time=analysis_time,
+                              api_details=api_details,
+                              cached=False,
+                              analyzed_at="Just now")
+    
     except Exception as e:
-        error_details = traceback.format_exc()
-        error(f"Web request error with model {model}: {str(e)}")
-        error(f"Traceback: {error_details}")
-        print_status(f"Web request error with model {model}: {str(e)}", is_error=True)
-        print_status(error_details, is_error=True)
+        error(f"Error in analysis_result: {str(e)}")
+        import traceback
+        error(traceback.format_exc())
+        
+        # Determine error type from exception
+        error_type = 'unknown'
+        error_title = 'Unexpected Error'
+        
+        if 'openai' in str(e).lower() or 'api' in str(e).lower():
+            error_type = 'openai_api'
+            error_title = 'OpenAI API Error'
+        elif 'extraction' in str(e).lower() or 'url' in str(e).lower() or 'http' in str(e).lower():
+            error_type = 'extraction'
+            error_title = 'Content Extraction Error'
+        
         return render_template('partials/analysis_error.html',
-                             error=f"An error occurred: {str(e)}",
-                             error_type='unknown',
-                             error_title='Unexpected Error',
-                             url=url,
-                             model=model,
-                             details=error_details if os.getenv('FLASK_DEBUG') == '1' else None), 500
+                              error=f'Error during analysis: {str(e)}',
+                              error_type=error_type,
+                              error_title=error_title,
+                              url=url,
+                              model=model,
+                              details=traceback.format_exc() if os.getenv('FLASK_DEBUG') == '1' else None), 500
 
 @analysis_bp.route('/export/<format_type>')
 def export_analysis(format_type):
@@ -658,7 +703,7 @@ def export_analysis(format_type):
     Export analysis in the specified format.
     Supports JSON, CSV, PDF, and Markdown formats.
     """
-    url = request.args.get('url', '')
+    url = sanitize_input(request.args.get('url', ''))
     
     # Validate URL
     is_valid, error_message = validate_url(url)
@@ -669,7 +714,7 @@ def export_analysis(format_type):
         }), 400
     
     # Format type from URL parameter
-    format_type = format_type.lower()
+    format_type = sanitize_input(format_type.lower())
     
     # Check cache for existing analysis
     existing_analysis = get_analysis_by_url(url)

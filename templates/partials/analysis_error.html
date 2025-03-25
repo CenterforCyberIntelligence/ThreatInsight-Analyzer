@@ -4,78 +4,94 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="errorModalLabel">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>
                     {{ error_title|default('Analysis Failed') }}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="error-message mb-3">
-                    <div class="d-flex">
-                        <i class="bi bi-exclamation-circle text-danger me-3 fs-4"></i>
-                        <div>
-                            <p>{{ error }}</p>
-                            
-                            {% if error_type == 'openai_api' %}
-                            <div class="error-suggestions">
-                                <p><strong>Suggestions:</strong></p>
-                                <ul>
-                                    <li>Try using a different OpenAI model</li>
-                                    <li>Check if your API key has sufficient quota</li>
-                                    <li>The OpenAI service might be experiencing high traffic</li>
-                                </ul>
-                            </div>
-                            {% elif error_type == 'extraction' %}
-                            <div class="error-suggestions">
-                                <p><strong>Suggestions:</strong></p>
-                                <ul>
-                                    <li>Verify the URL is correct and accessible</li>
-                                    <li>The website might be blocking automated content extraction</li>
-                                    <li>Try a different article from the same source</li>
-                                </ul>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+                <p>{{ error }}</p>
+                
+                {% if error_type == 'openai_api' %}
+                <ul class="mt-3 ps-3">
+                    <li>Try using a different OpenAI model</li>
+                    <li>Check if your API key has sufficient quota</li>
+                    <li>The OpenAI service might be experiencing high traffic</li>
+                </ul>
+                {% elif error_type == 'extraction' %}
+                <ul class="mt-3 ps-3">
+                    <li>Verify the URL is correct and accessible</li>
+                    <li>The website might be blocking automated content extraction</li>
+                    <li>Try a different article from the same source</li>
+                </ul>
+                {% elif error_type == 'validation' %}
+                <ul class="mt-3 ps-3">
+                    <li>Make sure the URL uses http:// or https:// protocol</li>
+                    <li>Check if the domain is correctly formatted</li>
+                    <li>Try removing any special characters from the URL</li>
+                </ul>
+                {% endif %}
                 
                 {% if details %}
-                <div class="mt-3 mb-3">
+                <div class="mt-4">
                     <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#error-details" aria-expanded="false" aria-controls="error-details">
-                        <i class="bi bi-code me-1"></i> Technical details
+                        <i class="bi bi-code-slash me-1"></i> Technical details
                     </button>
                     <div class="collapse mt-2" id="error-details">
-                        <div class="card card-body">
-                            <pre class="mb-0">{{ details }}</pre>
+                        <div class="card card-body bg-dark">
+                            <pre class="mb-0 text-info">{{ details }}</pre>
                         </div>
                     </div>
                 </div>
                 {% endif %}
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-check-lg me-1"></i> Okay
+                </button>
                 
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-check me-1"></i> Okay
-                    </button>
-                    
-                    {% if url and model %}
-                    <button type="button" class="btn btn-primary" 
-                            hx-post="/analyze" 
-                            hx-vals='{"url": "{{ url }}", "model": "{{ model }}"}'
-                            hx-target="#analysis-result-container"
-                            hx-indicator="#loading-indicator">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Retry Analysis
-                    </button>
-                    {% endif %}
-                </div>
+                {% if url and model %}
+                <button type="button" class="btn btn-primary" 
+                        hx-post="/analyze" 
+                        hx-vals='{"url": "{{ url }}", "model": "{{ model }}"}'
+                        hx-target="#analysis-result-container"
+                        hx-indicator="#loading-indicator">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Retry
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // Immediately display the error modal when loaded
     document.addEventListener('DOMContentLoaded', function() {
-        // Show the modal
-        const errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
-        errorModal.show();
+        try {
+            const errorModal = new bootstrap.Modal(document.getElementById('error-modal'));
+            errorModal.show();
+        } catch (e) {
+            console.error('Error showing modal on DOMContentLoaded:', e);
+        }
     });
+    
+    // In case the document is already loaded
+    (function() {
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(function() {
+                try {
+                    const errorModal = document.getElementById('error-modal');
+                    if (errorModal) {
+                        const bsModal = new bootstrap.Modal(errorModal);
+                        bsModal.show();
+                    } else {
+                        console.error('Error modal element not found');
+                    }
+                } catch (e) {
+                    console.error('Error showing modal:', e);
+                }
+            }, 100);
+        }
+    })();
 </script> 

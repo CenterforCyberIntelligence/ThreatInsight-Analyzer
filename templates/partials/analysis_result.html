@@ -92,136 +92,49 @@
                 <div id="export-status"></div>
             </div>
             
-            <!-- API Details Section -->
-            {% if api_details %}
-            <div class="api-details mb-3">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div><strong>Model:</strong> {{ api_details.response.model if api_details.response is not mapping else api_details.response['model'] }}</div>
-                        <div><strong>Input Tokens:</strong> {{ api_details.response.input_tokens if api_details.response is not mapping else api_details.response['input_tokens'] }}</div>
-                        <div><strong>Output Tokens:</strong> {{ api_details.response.output_tokens if api_details.response is not mapping else api_details.response['output_tokens'] }}</div>
-                        <div><strong>Total Tokens:</strong> {{ api_details.response.total_tokens if api_details.response is not mapping else api_details.response['total_tokens'] }}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <div><strong>Extraction Time:</strong> {{ "{:.2f}".format(extraction_time) if extraction_time is defined else "N/A" }}s</div>
-                        <div><strong>Analysis Time:</strong> {{ "{:.2f}".format(analysis_time) if analysis_time is defined else "N/A" }}s</div>
-                        <div><strong>Content Length:</strong> {{ content_length if content_length is defined else "N/A" }} chars</div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Token Usage Section -->
-            <div class="mb-4">
-                <div class="row g-3">
-                    {% if input_tokens is defined and input_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Input Tokens</h5>
-                                    <p class="display-6">{{ input_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif api_details %}
-                        {% set response_input_tokens = api_details.response.input_tokens if api_details.response is not mapping else api_details.response['input_tokens'] if 'input_tokens' in api_details.response else 0 %}
-                        {% if response_input_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Input Tokens</h5>
-                                    <p class="display-6">{{ response_input_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                    
-                    {% if output_tokens is defined and output_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Output Tokens</h5>
-                                    <p class="display-6">{{ output_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif api_details %}
-                        {% set response_output_tokens = api_details.response.output_tokens if api_details.response is not mapping else api_details.response['output_tokens'] if 'output_tokens' in api_details.response else 0 %}
-                        {% if response_output_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Output Tokens</h5>
-                                    <p class="display-6">{{ response_output_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                    
-                    {% if total_tokens is defined and total_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Total Tokens</h5>
-                                    <p class="display-6">{{ total_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    {% elif api_details %}
-                        {% set response_total_tokens = api_details.response.total_tokens if api_details.response is not mapping else api_details.response['total_tokens'] if 'total_tokens' in api_details.response else 0 %}
-                        {% if response_total_tokens > 0 %}
-                        <div class="col-md-4">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title text-primary">Total Tokens</h5>
-                                    <p class="display-6">{{ response_total_tokens }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Nav tabs for formatted vs raw view -->
-            <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="formatted-tab" data-bs-toggle="tab" href="#formatted" role="tab" aria-controls="formatted" aria-selected="true">Formatted Analysis</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="raw-tab" data-bs-toggle="tab" href="#raw" role="tab" aria-controls="raw" aria-selected="false">Raw Output</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="indicators-tab" data-bs-toggle="tab" href="#indicators" role="tab" aria-controls="indicators" aria-selected="false">
-                        Indicators
-                        {% if indicators and indicators.total_count > 0 %}
-                        <span class="badge bg-primary ms-1">{{ indicators.total_count }}</span>
-                        {% endif %}
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs nav-fill border-bottom mb-3" id="analysisTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active fw-semibold" id="formatted-tab" data-bs-toggle="tab" href="#formatted" role="tab">
+                        <i class="bi bi-file-text me-2"></i>Report Analysis
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="critical-sectors-tab" data-bs-toggle="tab" href="#critical-sectors" role="tab" aria-controls="critical-sectors" aria-selected="false">Critical Sectors</a>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link fw-semibold" id="raw-tab" data-bs-toggle="tab" href="#raw" role="tab">
+                        <i class="bi bi-code-slash me-2"></i>AI Raw Output
+                    </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="mitre-tab" data-bs-toggle="tab" href="#mitre" role="tab" aria-controls="mitre" aria-selected="false">
-                                MITRE ATT&CK Techniques
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link fw-semibold" id="indicators-tab" data-bs-toggle="tab" href="#indicators" role="tab">
+                        <i class="bi bi-shield-lock me-2"></i>Indicators
+                        {% if indicators and indicators.total_count > 0 %}
+                        <span class="badge bg-primary rounded-pill ms-1">{{ indicators.total_count }}</span>
+                        {% endif %}
+                    </a>    
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link fw-semibold" id="critical-sectors-tab" data-bs-toggle="tab" href="#critical-sectors" role="tab">
+                        <i class="bi bi-building-fill-lock me-2"></i>Critical Sectors
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link fw-semibold" id="mitre-tab" data-bs-toggle="tab" href="#mitre" role="tab">
+                        <i class="bi bi-grid-3x3-gap me-2"></i>MITRE ATT&CK
                     </a>
                 </li>
             </ul>
             
             <!-- Tab content -->
-            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="analysis-content">
-                <!-- Formatted Analysis Tab -->
+            <div class="tab-content p-3 rounded-bottom" id="analysis-content">
+                <!-- Report Analysis Tab -->
                 <div class="tab-pane fade show active" id="formatted" role="tabpanel" aria-labelledby="formatted-tab">
-                    {% if structured_analysis %}
+                    {% if structured_data %}
                     
                     <!-- Summary -->
                     <div class="mb-4">
-                        <h5 class="border-bottom pb-2"><i class="bi bi-file-text me-2"></i>Summary</h5>
-                        {% if structured_analysis and structured_analysis.summary %}
-                            <p>{{ structured_analysis.summary }}</p>
+                        <h5 class="border-bottom pb-2"><i class="bi bi-file-text me-2"></i>Report Summary</h5>
+                        {% if structured_data and structured_data.summary %}
+                            <p>{{ structured_data.summary }}</p>
                                                         {% else %}
                             <div class="alert alert-warning">
                                 No summary available.
@@ -232,17 +145,17 @@
                     <!-- Source Evaluation -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2"><i class="bi bi-shield-check me-2"></i>Source Evaluation</h5>
-                        {% if structured_analysis and structured_analysis.source_evaluation %}
+                        {% if structured_data and structured_data.source_evaluation %}
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
                                     <div class="card h-100">
                                         <div class="card-header">Reliability</div>
                                         <div class="card-body text-center">
-                                            {% if structured_analysis.source_evaluation.reliability %}
-                                                {% if structured_analysis.source_evaluation.reliability is mapping %}
-                                                    {% set reliability_level = structured_analysis.source_evaluation.reliability.LEVEL if structured_analysis.source_evaluation.reliability.LEVEL is defined else structured_analysis.source_evaluation.reliability.level %}
+                                            {% if structured_data.source_evaluation.reliability %}
+                                                {% if structured_data.source_evaluation.reliability is mapping %}
+                                                    {% set reliability_level = structured_data.source_evaluation.reliability.LEVEL if structured_data.source_evaluation.reliability.LEVEL is defined else structured_data.source_evaluation.reliability.level %}
                                                     {% else %}
-                                                    {% set reliability_level = structured_analysis.source_evaluation.reliability %}
+                                                    {% set reliability_level = structured_data.source_evaluation.reliability %}
                                                     {% endif %}
                                                 
                                                 {% if reliability_level|upper == 'HIGH' %}
@@ -255,8 +168,8 @@
                                                     <span class="badge bg-secondary fs-5">{{ reliability_level }}</span>
                                                     {% endif %}
                                                 
-                                                {% if structured_analysis.source_evaluation.reliability is mapping and structured_analysis.source_evaluation.reliability.JUSTIFICATION is defined %}
-                                                    <div class="mt-2 small text-muted">{{ structured_analysis.source_evaluation.reliability.JUSTIFICATION }}</div>
+                                                {% if structured_data.source_evaluation.reliability is mapping and structured_data.source_evaluation.reliability.JUSTIFICATION is defined %}
+                                                    <div class="mt-2 small text-muted">{{ structured_data.source_evaluation.reliability.JUSTIFICATION }}</div>
                                                 {% endif %}
                                             {% else %}
                                                 <span class="badge bg-secondary fs-5">Unknown</span>
@@ -268,11 +181,11 @@
                                     <div class="card h-100">
                                         <div class="card-header">Credibility</div>
                                         <div class="card-body text-center">
-                                            {% if structured_analysis.source_evaluation.credibility %}
-                                                {% if structured_analysis.source_evaluation.credibility is mapping %}
-                                                    {% set credibility_level = structured_analysis.source_evaluation.credibility.LEVEL if structured_analysis.source_evaluation.credibility.LEVEL is defined else structured_analysis.source_evaluation.credibility.level %}
+                                            {% if structured_data.source_evaluation.credibility %}
+                                                {% if structured_data.source_evaluation.credibility is mapping %}
+                                                    {% set credibility_level = structured_data.source_evaluation.credibility.LEVEL if structured_data.source_evaluation.credibility.LEVEL is defined else structured_data.source_evaluation.credibility.level %}
                                                 {% else %}
-                                                    {% set credibility_level = structured_analysis.source_evaluation.credibility %}
+                                                    {% set credibility_level = structured_data.source_evaluation.credibility %}
                         {% endif %}
                         
                                                 {% if credibility_level|upper == 'HIGH' %}
@@ -285,8 +198,8 @@
                                                     <span class="badge bg-secondary fs-5">{{ credibility_level }}</span>
                                                 {% endif %}
                                                 
-                                                {% if structured_analysis.source_evaluation.credibility is mapping and structured_analysis.source_evaluation.credibility.JUSTIFICATION is defined %}
-                                                    <div class="mt-2 small text-muted">{{ structured_analysis.source_evaluation.credibility.JUSTIFICATION }}</div>
+                                                {% if structured_data.source_evaluation.credibility is mapping and structured_data.source_evaluation.credibility.JUSTIFICATION is defined %}
+                                                    <div class="mt-2 small text-muted">{{ structured_data.source_evaluation.credibility.JUSTIFICATION }}</div>
                                                 {% endif %}
                                             {% else %}
                                                 <span class="badge bg-secondary fs-5">Unknown</span>
@@ -298,7 +211,7 @@
                                     <div class="card h-100">
                                         <div class="card-header">Source Type</div>
                                         <div class="card-body text-center">
-                                            <span class="badge bg-info text-dark fs-5">{{ structured_analysis.source_evaluation.source_type }}</span>
+                                            <span class="badge bg-info text-dark fs-5">{{ structured_data.source_evaluation.source_type }}</span>
                                 </div>
                             </div>
                                 </div>
@@ -312,58 +225,72 @@
                     
                     <!-- Threat Actors -->
                     <div class="mb-4">
-                        <h5 class="border-bottom pb-2"><i class="bi bi-people me-2"></i>Threat Actors</h5>
-                        {% if structured_analysis and structured_analysis.threat_actors and structured_analysis.threat_actors|length > 0 %}
+                        <h5 class="border-bottom pb-2">
+                            <i class="bi bi-people me-2" style="color: var(--accent-blue);"></i>Threat Actors
+                        </h5>
+                        {% if structured_data and structured_data.threat_actors and structured_data.threat_actors|length > 0 %}
                             <div class="table-responsive">
-                                <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Actor</th>
-                                                <th>Confidence</th>
-                                            <th>Details</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for actor in structured_analysis.threat_actors %}
-                                            <tr>
-                                                <td>
-                                                    <strong>{{ actor.name }}</strong>
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th class="bg-elevated text-primary">Actor</th>
+                                            <th class="bg-elevated text-primary">Confidence</th>
+                                            <th class="bg-elevated text-primary">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for actor in structured_data.threat_actors %}
+                                        <tr class="threat-actor-row">
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <strong class="actor-name">{{ actor.name }}</strong>
                                                     {% if actor.aliases and actor.aliases|length > 0 %}
-                                                        <div class="small text-muted">
+                                                        <div class="small text-muted mt-1">
+                                                            <i class="bi bi-person-badge me-1"></i>
                                                             aka: {{ actor.aliases|join(', ') }}
                                                         </div>
                                                     {% endif %}
-                                                </td>
-                                                <td>
-                                                    {% if actor.confidence == 'High' %}
-                                                        <span class="badge bg-success">{{ actor.confidence }}</span>
-                                                    {% elif actor.confidence == 'Medium' %}
-                                                        <span class="badge bg-warning text-dark">{{ actor.confidence }}</span>
-                                                    {% elif actor.confidence == 'Low' %}
-                                                        <span class="badge bg-danger">{{ actor.confidence }}</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">{{ actor.confidence }}</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>{{ actor.description }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if actor.confidence == 'High' %}
+                                                    <span class="badge confidence-badge high">
+                                                        <i class="bi bi-shield-fill-check me-1"></i>{{ actor.confidence }}
+                                                    </span>
+                                                {% elif actor.confidence == 'Medium' %}
+                                                    <span class="badge confidence-badge medium">
+                                                        <i class="bi bi-shield-fill me-1"></i>{{ actor.confidence }}
+                                                    </span>
+                                                {% elif actor.confidence == 'Low' %}
+                                                    <span class="badge confidence-badge low">
+                                                        <i class="bi bi-shield me-1"></i>{{ actor.confidence }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge confidence-badge unknown">
+                                                        <i class="bi bi-question-circle me-1"></i>{{ actor.confidence }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="description">{{ actor.description }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                         {% else %}
-                            <div class="alert alert-warning">
+                            <div class="alert alert-warning border-warning bg-opacity-10">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
                                 No threat actors identified in this analysis.
-                        </div>
+                            </div>
                         {% endif %}
                     </div>
                     
                     <!-- Key Insights -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2"><i class="bi bi-lightbulb me-2"></i>Key Threat Intelligence Insights</h5>
-                        {% if structured_analysis and structured_analysis.key_insights and structured_analysis.key_insights|length > 0 %}
+                        {% if structured_data and structured_data.key_insights and structured_data.key_insights|length > 0 %}
                             <ul class="list-group mb-3">
-                                {% for insight in structured_analysis.key_insights %}
+                                {% for insight in structured_data.key_insights %}
                                     <li class="list-group-item">{{ insight }}</li>
                                     {% endfor %}
                             </ul>
@@ -377,9 +304,9 @@
                     <!-- Potential Source Bias -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2"><i class="bi bi-shield-exclamation me-2"></i>Potential Source Bias</h5>
-                        {% if structured_analysis and structured_analysis.potential_bias and structured_analysis.potential_bias|length > 0 %}
+                        {% if structured_data and structured_data.potential_bias and structured_data.potential_bias|length > 0 %}
                             <ul class="list-group mb-3">
-                                {% for bias in structured_analysis.potential_bias %}
+                                {% for bias in structured_data.potential_bias %}
                                     <li class="list-group-item">{{ bias }}</li>
                                 {% endfor %}
                             </ul>
@@ -393,9 +320,9 @@
                     <!-- Intelligence Gaps -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2"><i class="bi bi-patch-question me-2"></i>Intelligence Gaps</h5>
-                        {% if structured_analysis and structured_analysis.intelligence_gaps and structured_analysis.intelligence_gaps|length > 0 %}
+                        {% if structured_data and structured_data.intelligence_gaps and structured_data.intelligence_gaps|length > 0 %}
                             <ul class="list-group mb-3">
-                                {% for gap in structured_analysis.intelligence_gaps %}
+                                {% for gap in structured_data.intelligence_gaps %}
                                     <li class="list-group-item">{{ gap }}</li>
                                 {% endfor %}
                             </ul>
@@ -418,9 +345,9 @@
                 <div class="tab-pane fade" id="raw" role="tabpanel" aria-labelledby="raw-tab">
                     <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-code-slash me-2"></i>Raw Analysis Data</h4>
                     
-                    {% if analysis %}
+                    {% if result %}
                         <div class="bg-dark text-light p-3 rounded raw-json-container">
-                            <pre class="mb-0"><code id="json-content">{{ analysis }}</code></pre>
+                            <pre class="mb-0"><code id="json-content">{{ result }}</code></pre>
                         </div>
                         <div class="d-flex justify-content-center mt-3 gap-2">
                             <button id="copyJsonBtn" class="btn btn-primary" onclick="copyRawJson()">
@@ -441,76 +368,86 @@
                 <div class="tab-pane fade" id="indicators" role="tabpanel" aria-labelledby="indicators-tab">
                     <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-shield-lock me-2"></i>Indicators of Compromise</h4>
                     
-                    {% if indicators and indicators|length > 0 %}
-                        <ul class="nav nav-tabs mb-3" id="ioc-tabs" role="tablist">
-                            {% for ioc_type, items in indicators.items() %}
-                                {% if items|length > 0 and ioc_type != 'total_count' %}
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link {% if loop.first %}active{% endif %}" 
-                                        id="ioc-{{ ioc_type }}-tab" 
-                                        data-bs-toggle="tab" 
-                                        data-bs-target="#ioc-{{ ioc_type }}" 
-                                        type="button" 
-                                        role="tab" 
-                                        aria-controls="ioc-{{ ioc_type }}" 
-                                        aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
-                                        {{ ioc_type|capitalize }}
-                                        <span class="badge bg-primary ms-1">{{ items|length }}</span>
-                                    </button>
-                                </li>
-                                {% endif %}
-                            {% endfor %}
-                        </ul>
-                        <div class="tab-content" id="ioc-content">
-                            {% for ioc_type, items in indicators.items() %}
-                                {% if items|length > 0 and ioc_type != 'total_count' %}
-                                <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
-                                    id="ioc-{{ ioc_type }}" 
-                                    role="tabpanel" 
-                                    aria-labelledby="ioc-{{ ioc_type }}-tab">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-striped">
-                                        <thead>
-                                            <tr>
-                                                    <th scope="col">Value</th>
-                                                    <th scope="col">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                                {% for item in items %}
-                                                <tr>
-                                                    <td><code>{{ item }}</code></td>
-                                                    <td>
-                                                        <div class="btn-group btn-group-sm" role="group">
-                                                            <button type="button" class="btn btn-outline-secondary" onclick="copyToClipboard('{{ item }}')">
-                                                                <i class="bi bi-clipboard"></i>
-                                                            </button>
-                                                            <a href="https://www.virustotal.com/gui/search/{{ item }}" target="_blank" class="btn btn-outline-secondary">
-                                                                <i class="bi bi-search"></i> VT
-                                                            </a>
-                                                        </div>
-                                                    </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
+                    {% if indicators and indicators.total_count > 0 %}
+                        {% for category in indicators.categories %}
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">{{ category.name }}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="nav nav-tabs mb-3" role="tablist">
+                                        {% for type_info in category.types %}
+                                            {% if type_info.indicator_values|length > 0 %}
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                                        id="ioc-{{ category.name|lower|replace(' ', '-') }}-{{ type_info.type|replace(' ', '-')|lower }}-tab" 
+                                                        data-bs-toggle="tab" 
+                                                        data-bs-target="#ioc-{{ category.name|lower|replace(' ', '-') }}-{{ type_info.type|replace(' ', '-')|lower }}" 
+                                                        type="button" 
+                                                        role="tab" 
+                                                        aria-controls="ioc-{{ category.name|lower|replace(' ', '-') }}-{{ type_info.type|replace(' ', '-')|lower }}" 
+                                                        aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                                        {{ type_info.type }}
+                                                        <span class="badge bg-primary ms-1">{{ type_info.count }}</span>
+                                                    </button>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                    
+                                    <div class="tab-content">
+                                        {% for type_info in category.types %}
+                                            {% if type_info.indicator_values|length > 0 %}
+                                                <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                                                    id="ioc-{{ category.name|lower|replace(' ', '-') }}-{{ type_info.type|replace(' ', '-')|lower }}" 
+                                                    role="tabpanel" 
+                                                    aria-labelledby="ioc-{{ category.name|lower|replace(' ', '-') }}-{{ type_info.type|replace(' ', '-')|lower }}-tab">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-hover table-striped">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th scope="col">Value</th>
+                                                                    <th scope="col">Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for item in type_info.indicator_values %}
+                                                                    <tr>
+                                                                        <td><code>{{ item }}</code></td>
+                                                                        <td>
+                                                                            <div class="btn-group btn-group-sm" role="group">
+                                                                                <button type="button" class="btn btn-outline-secondary" onclick="copyToClipboard('{{ item }}')">
+                                                                                    <i class="bi bi-clipboard"></i>
+                                                                                </button>
+                                                                                <a href="https://www.virustotal.com/gui/search/{{ item }}" target="_blank" class="btn btn-outline-secondary">
+                                                                                    <i class="bi bi-search"></i> VT
+                                                                                </a>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
-                            {% endif %}
-                                            {% endfor %}
-                                </div>
+                        {% endfor %}
                     {% else %}
                         <div class="alert alert-warning">
                             No indicators of compromise were found in this article.
-                            </div>
-                            {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
                 
                 <!-- Critical Sectors Tab -->
                 <div class="tab-pane fade" id="critical-sectors" role="tabpanel" aria-labelledby="critical-sectors-tab">
                     <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-building-fill-lock me-2"></i>Critical Infrastructure Impact</h4>
                     
-                    {% if structured_analysis and structured_analysis.critical_sectors and structured_analysis.critical_sectors|length > 0 %}
+                    {% if structured_data and structured_data.critical_sectors and structured_data.critical_sectors|length > 0 %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead class="table-light">
@@ -521,7 +458,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                    {% for sector in structured_analysis.critical_sectors %}
+                                    {% for sector in structured_data.critical_sectors %}
                                         <tr>
                                             <td>{{ sector.name }}</td>
                                             <td>{{ sector.impact }}</td>
@@ -571,7 +508,7 @@
                 <div class="tab-pane fade" id="mitre" role="tabpanel" aria-labelledby="mitre-tab">
                     <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-grid-3x3 me-2"></i>MITRE ATT&CK Techniques</h4>
                     
-                    {% if structured_analysis and structured_analysis.mitre_techniques and structured_analysis.mitre_techniques|length > 0 %}
+                    {% if structured_data and structured_data.mitre_techniques and structured_data.mitre_techniques|length > 0 %}
                         <div class="table-responsive">
                             <table class="table table-striped">
                                         <thead>
@@ -583,7 +520,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                    {% for technique in structured_analysis.mitre_techniques %}
+                                    {% for technique in structured_data.mitre_techniques %}
                                         <tr>
                                             <td><code>{{ technique.id }}</code></td>
                                             <td>{{ technique.name }}</td>
@@ -888,4 +825,191 @@ function showToast(title, message, type) {
 
 // Trigger a formatting on load to ensure it happens
 setTimeout(formatRawJson, 50);
+
+// Function to copy text to clipboard
+function copyToClipboard(text) {
+    // Create a temporary textarea element
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    
+    // Select the text and copy it
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Remove the textarea
+    document.body.removeChild(textarea);
+    
+    // Show feedback toast
+    showToast('Copied', `"${text.substring(0, 30)}${text.length > 30 ? '...' : ''}" copied to clipboard`, 'success');
+}
 </script>
+
+<style>
+.nav-tabs {
+    border-bottom: var(--border-subtle);
+    background: linear-gradient(180deg, var(--bg-secondary), var(--bg-tertiary));
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: 0.25rem 0.25rem 0;
+}
+
+.nav-tabs .nav-link {
+    color: var(--text-secondary);
+    transition: all var(--transition-normal);
+    padding: 0.75rem 1.25rem;
+    position: relative;
+    border: 1px solid transparent;
+    margin-right: 0.25rem;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--text-primary);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--accent-blue);
+    background: var(--bg-secondary);
+    border-color: var(--accent-blue);
+    border-bottom-color: transparent;
+    font-weight: 600;
+    box-shadow: 0 -2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.nav-tabs .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        rgba(59, 130, 246, 0) 0%, 
+        rgba(59, 130, 246, 0.7) 50%, 
+        rgba(59, 130, 246, 0) 100%
+    );
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+.nav-tabs .nav-link .badge {
+    font-size: 0.75em;
+    padding: 0.35em 0.65em;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: var(--accent-blue);
+    transition: all var(--transition-normal);
+}
+
+.nav-tabs .nav-link:hover .badge {
+    background: rgba(59, 130, 246, 0.3);
+    transform: scale(1.05);
+}
+
+.nav-tabs .nav-link.active .badge {
+    background: var(--accent-blue);
+    color: white;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.nav-tabs .nav-link i {
+    color: var(--text-muted);
+    transition: all var(--transition-normal);
+}
+
+.nav-tabs .nav-link:hover i {
+    color: var(--text-primary);
+}
+
+.nav-tabs .nav-link.active i {
+    color: var(--accent-blue);
+}
+
+/* Threat Actors Section Styling */
+.threat-actor-row {
+    background-color: var(--bg-secondary);
+    transition: all var(--transition-normal);
+}
+
+.threat-actor-row:hover {
+    background-color: var(--bg-elevated);
+    transform: translateX(2px);
+    box-shadow: -2px 0 0 var(--accent-blue);
+}
+
+.actor-name {
+    color: var(--text-primary);
+    font-family: var(--heading-font);
+    letter-spacing: 0.02em;
+}
+
+.confidence-badge {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+}
+
+.confidence-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.confidence-badge.high {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.confidence-badge.medium {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.confidence-badge.low {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.confidence-badge.unknown {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.description {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Table header styling */
+.table thead th {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    font-family: var(--heading-font);
+    letter-spacing: 0.02em;
+    border-bottom: var(--border-subtle);
+    padding: 1rem;
+}
+
+/* Alert styling */
+.alert-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.alert-warning i {
+    color: var(--warning);
+}
+</style>

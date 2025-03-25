@@ -12,6 +12,8 @@
 | 🔴 **OpenAI API Integration Issues** | Various | Multiple test failures due to `AttributeError: module 'openai.resources.chat.completions' has no attribute 'ChatCompletions'`. Core analysis functionality is broken. |
 | 🔴 **Missing Routes** | Various | Route tests failing with 404 errors. Core application navigation is broken. |
 | 🔴 **Database Model Changes** | Various | Mismatches in database field names and expected data structures causing test failures. |
+| 🔴 **Secret Management** | `app/config/config.py`, `.env.template` | Empty `SECRET_KEY` in .env.template and insufficient API key protection. Secret key should be auto-generated during installation if not provided, and API keys should be stored encrypted. |
+| 🔴 **Server-Side Request Forgery (SSRF)** | `app/utilities/article_extractor.py` | The application extracts content from user-provided URLs without adequate validation, allowing potential access to internal network resources. Implement IP/hostname validation to prevent access to private networks. |
 
 ### High Priority Issues
 
@@ -25,6 +27,11 @@
 | 🟠 **Missing Environment Variable Handling** | Settings blueprint | Missing `update_env_file` function in settings blueprint preventing configuration updates through UI. |
 | 🟠 **Analysis Workflow Tests Failing** | Analysis blueprint | Multiple failures in the analysis blueprint tests affecting core functionality. |
 | 🟠 **Helper Function Inconsistencies** | Various utility functions | Functions like `format_timestamp`, `generate_slug`, `sanitize_filename` returning different values than expected. |
+| 🟠 **Cross-Site Request Forgery (CSRF)** | Multiple forms and HTMX requests | No CSRF protection implemented for forms or HTMX requests. Implement Flask-WTF for CSRF protection and include tokens in all forms and HTMX requests. |
+| 🟠 **Debug Endpoints Exposure** | `app/blueprints/analysis.py` | Debug endpoints like `/debug/raw-json` expose sensitive information with minimal protection. Restrict debug endpoints to development environments and implement proper authentication. |
+| 🟠 **URL Validation Weaknesses** | `app/blueprints/analysis.py` | Current URL validation doesn't block access to private IP ranges and has limited protection against URL encoding tricks. Implement comprehensive URL validation to block internal/private networks. |
+| 🟠 **Insecure Direct Object Reference (IDOR)** | `app/blueprints/analysis.py` | No authentication checks before returning analysis results by URL, allowing anyone to access any analysis. Implement proper authentication and authorization checks. |
+| 🟠 **Unsafe HTML Content Parsing** | `app/utilities/article_extractor.py` | HTML from external sites is parsed without proper sanitization, potentially leading to injection attacks. Add HTML sanitization using libraries like Bleach. |
 
 ### Medium Priority Issues
 
@@ -47,6 +54,10 @@
 | 🟡 **Error Handler Tests Failing** | Error handler | Custom error pages not working as expected, leading to poor user experience when errors occur. |
 | 🟡 **Export Functionality Partially Implemented** | Export functionality | PDF format exports are not properly formatted and cannot be opened in Adobe Acrobat. |
 | 🟡 **View Button for Individual Reports on History Page** | `history.html` | When clicking on the "View" button for any report on the history page, the user is simply redirected back to the home page, rather than being shown the requested report. |
+| 🟡 **XSS Protection Weaknesses** | Templates and rendering logic | Potential for XSS in certain template areas where data isn't properly escaped. Enforce template escaping and sanitize user-generated content using Bleach. |
+| 🟡 **Insufficient Authentication** | Application-wide | No proper user authentication system and admin functions protected only by simple tokens. Implement Flask-Login with secure password hashing and proper role-based access control. |
+| 🟡 **Logging Sensitive Information** | `app/utilities/logger.py` | Logs may contain sensitive information like API keys or user data. Implement sensitive data filtering in logs and structured logging with proper PII handling. |
+| 🟡 **Insecure Cookie Configuration** | `app/__init__.py` | Session cookies lack secure, httpOnly, and SameSite attributes. Configure secure cookie settings, especially for production environments. |
 
 ### Low Priority Issues
 
@@ -57,6 +68,7 @@
 | 🟢 **Contact Form Validation Discrepancies** | Contact form | Tests expect 400 responses for invalid data but receiving 404. |
 | 🟢 **Text Truncation Inconsistencies** | Text utilities | Inconsistent truncation behavior with ellipsis causing minor display issues. |
 | 🟢 **History Page UI/UX** | `history.html` | Poor page formatting. |
+| 🟢 **Missing Rate Limiting** | API endpoints | No rate limiting implemented, potentially allowing abuse. Add Flask-Limiter to protect endpoints, especially login and analysis endpoints. |
 
 ### Partially Resolved Issues
 
@@ -71,9 +83,12 @@
 
 | Issue | File | Resolution | Changelog Reference |
 |-------|------|------------|---------------------|
+| ✅ **Input Sanitization for All User Inputs** | Various | Implemented the `sanitize_input` utility function in `app/utilities/sanitizers.py` and applied it throughout the application to prevent XSS, SQL injection, and other injection attacks. The function properly sanitizes input, decodes URL encoding, removes NULL bytes, and handles HTML entities appropriately. | [1.1.1](CHANGELOG.md#111---2024-03-21) |
 | ✅ **Lack of Input Validation** | `app/blueprints/analysis.py` | Added validators library for URL format validation, implemented allowed domain patterns, TLD validation, domain blocklist capability, protocol validation, and input sanitization. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
 | ✅ **Unsafe SQL Queries** | `app/models/database.py` | Created a database connection context manager, standardized parameterized queries, added centralized error handling and logging, implemented proper transaction management, and added a safe query execution utility function. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
 | ✅ **URL Validation Logic for Complex Domains** | URL handling | Enhanced URL validation logic to detect IP patterns in domains and improved TLD validation to handle complex domain structures. | [1.0.0 Security Updates](CHANGELOG.md#100---2025-02-15) |
+| ✅ **URL Accessibility Check** | `app/blueprints/analysis.py` | Added HTTP 200 response check to URL validation process to ensure URLs are accessible before attempting content extraction and analysis, saving API costs and improving user experience. | [1.1.1](CHANGELOG.md#111---2024-03-21) |
+| ✅ **Missing Security Headers** | `app/__init__.py` | Implemented HTTP security headers including X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Strict-Transport-Security, and Permissions-Policy. Created a balanced Content Security Policy (CSP) with monitoring capabilities via CSP-Report-Only and a custom reporting endpoint to identify blocked resources. | [1.1.1](CHANGELOG.md#111---2024-03-21) |
 
 ### Performance Issues
 

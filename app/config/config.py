@@ -93,10 +93,9 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # API key for authentication
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")  # API endpoint
     OPENAI_API_TIMEOUT = int(os.getenv("OPENAI_API_TIMEOUT", "60"))  # Timeout for API requests in seconds
-    DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # Default model for analysis
+    DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini-2024-07-18")  # Default model for analysis
     DEFAULT_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.0"))  # Controls randomness
-    MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "1500"))  # Max tokens to generate
-    DEFAULT_SEED = int(os.getenv("OPENAI_SEED", "42"))  # Seed for reproducible outputs
+    MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", "1500"))
     
     #######################################################################
     # HEALTH CHECK SETTINGS
@@ -261,27 +260,23 @@ class Config:
     def get_available_models() -> Dict[str, Dict[str, str]]:
         """
         Get available OpenAI models from environment variables.
-        Parses the AVAILABLE_MODELS environment variable if present.
-        
-        The expected format is a JSON object mapping model IDs to objects with:
-        - name: User-friendly name for the model
-        - recommended_for: Description of what the model is good for
+        Only includes models that support structured outputs.
         
         Returns:
             Dictionary of model configurations
         """
         # Default models if environment variable is not set or invalid
         default_models = {
-            "gpt-4o-mini": {
+            "gpt-4o-mini-2024-07-18": {
                 "name": "GPT-4o mini",
                 "recommended_for": "Quick analysis of news articles and blog posts",
             },
-            "gpt-4o": {
+            "gpt-4o-2024-08-06": {
                 "name": "GPT-4o",
                 "recommended_for": "Detailed analysis of technical reports and research papers",
             },
-            "gpt-4-turbo": {
-                "name": "GPT-4.5 Turbo",
+            "gpt-4.5-preview-2025-02-27": {
+                "name": "GPT-4.5 Preview",
                 "recommended_for": "In-depth analysis of complex threat reports and intelligence briefs",
             }
         }
@@ -297,75 +292,30 @@ class Config:
             return default_models
 
     @staticmethod
-    def get_default_model() -> str:
-        """
-        Get the default OpenAI model to use when none is specified.
-        This is determined by the OPENAI_MODEL environment variable.
-        
-        Returns:
-            Default model ID (e.g., "gpt-4o")
-        """
-        return Config.DEFAULT_MODEL
-    
-    @staticmethod
     def get_model_prices() -> Dict[str, Dict[str, float]]:
         """
         Get pricing information for different OpenAI models.
-        Attempts to parse the OPENAI_MODEL_PRICES environment variable if available.
-        
-        The pricing is used for:
-        - Statistics and cost tracking
-        - Displaying pricing information to users
-        - Calculating estimated costs before running analysis
+        Only includes models that support structured outputs.
         
         Returns:
-            Dictionary mapping model IDs to pricing information for input, output, and cached tokens
+            Dictionary mapping model IDs to pricing information
         """
-        # Try to parse from environment variable OPENAI_MODEL_PRICES if available
-        model_prices_env = os.getenv("OPENAI_MODEL_PRICES")
-        if model_prices_env:
-            try:
-                return json.loads(model_prices_env)
-            except (json.JSONDecodeError, TypeError):
-                from app.utilities.logger import warning
-                warning("Failed to parse OPENAI_MODEL_PRICES from environment, using defaults")
-        
         # Default model pricing information (per 1K tokens)
         return {
-            "gpt-3.5-turbo": {
-                "input": 0.0005,   # Cost for input tokens
-                "cached": 0.00025, # Cost for cached tokens (used for cost optimization)
-                "output": 0.0015   # Cost for output tokens
-            },
-            "gpt-4o-mini": {
+            "gpt-4o-mini-2024-07-18": {
                 "input": 0.15,
                 "cached": 0.075,
                 "output": 0.6
             },
-            "gpt-4o": {
+            "gpt-4o-2024-08-06": {
                 "input": 0.5,
                 "cached": 0.25,
                 "output": 1.5
             },
-            "gpt-4-turbo": {
-                "input": 10.0,
-                "cached": 5.0,
-                "output": 30.0
-            },
-            "gpt-4": {
-                "input": 0.03,
-                "cached": 0.015,
-                "output": 0.06
-            },
-            "gpt-4-32k": {
-                "input": 0.06,
-                "cached": 0.03,
-                "output": 0.12
-            },
-            "gpt-4o-2024-08-06": {
-                "input": 5.0,
-                "cached": 0.0,
-                "output": 15.0
+            "gpt-4.5-preview-2025-02-27": {
+                "input": 1.0,
+                "cached": 0.5,
+                "output": 3.0
             }
         }
         
@@ -373,33 +323,19 @@ class Config:
     def normalize_model_id(model_id: str) -> str:
         """
         Normalize OpenAI model ID by removing version information.
-        This is crucial for matching model IDs with their base models for:
-        - Finding pricing information
-        - Determining token limits
-        - Displaying model information consistently
-        
-        For example:
-        - "gpt-4o-2024-08-06" -> "gpt-4o"
-        - "gpt-4-turbo-0125" -> "gpt-4-turbo"
-        - "gpt-3.5-turbo" -> "gpt-3.5-turbo"
+        Only handles models that support structured outputs.
         
         Returns:
             Normalized model ID (without version information)
         """
         if not model_id:
-            return "gpt-3.5-turbo"  # Default model if none specified
+            return "gpt-4o-mini-2024-07-18"  # Default model if none specified
             
         # Define model aliases to map specific versions to their base models
-        # This handles known model versions explicitly
         model_aliases = {
-            # Map any specific versioned models to base models
             "gpt-4o-2024-08-06": "gpt-4o",
             "gpt-4o-mini-2024-07-18": "gpt-4o-mini",
-            "gpt-4-turbo-2024-04-09": "gpt-4-turbo",
-            "gpt-3.5-turbo": "gpt-3.5-turbo",
-            "gpt-3.5-turbo-0125": "gpt-3.5-turbo",
-            "gpt-3.5-turbo-1106": "gpt-3.5-turbo",
-            "gpt-3.5-turbo-0613": "gpt-3.5-turbo"
+            "gpt-4.5-preview-2025-02-27": "gpt-4.5-preview"
         }
         
         # Check if there's a direct alias mapping
@@ -407,22 +343,32 @@ class Config:
             return model_aliases[model_id]
         
         # For standard versioned models, try to extract the base model
-        # Strip out date-based version identifiers like -2024-08-06 or -0125
         base_model = re.sub(r'-(20\d{2}-\d{2}-\d{2}|\d{4})$', '', model_id)
         
         # If we didn't find a specific match, try matching to known base models
         if base_model == model_id:
-            known_base_models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
+            known_base_models = ["gpt-4o", "gpt-4o-mini", "gpt-4.5-preview"]
             for known_model in known_base_models:
                 if known_model in model_id:
                     return known_model
         
-        # Add the new model
-        if "gpt-4o-2024-08-06" in model_id:
-            return "gpt-4o"
-        
         return base_model
         
+    @staticmethod
+    def get_token_limits():
+        """
+        Get token limits for different OpenAI models.
+        Only includes models that support structured outputs.
+        
+        Returns:
+            Dictionary mapping model IDs to their token limits
+        """
+        return {
+            "gpt-4o-mini-2024-07-18": 32768,
+            "gpt-4o-2024-08-06": 128000,
+            "gpt-4.5-preview-2025-02-27": 128000
+        }
+    
     @staticmethod
     def get_default_temperature() -> float:
         """
@@ -565,50 +511,6 @@ class Config:
     #######################################################################
     # TOKEN MANAGEMENT METHODS
     #######################################################################
-    
-    @staticmethod
-    def get_token_limits():
-        """
-        Get token limits for different OpenAI models.
-        Token limits are important for:
-        - Ensuring inputs don't exceed model capabilities
-        - Optimizing content chunking for long documents
-        - Estimating costs accurately
-        
-        Attempts to load from TOKEN_LIMITS environment variable if available.
-        
-        Returns:
-            Dictionary mapping model IDs to their token limits
-        """
-        # Try to parse from environment variable TOKEN_LIMITS if available
-        token_limits_env = os.getenv("TOKEN_LIMITS")
-        if token_limits_env:
-            try:
-                return json.loads(token_limits_env)
-            except (json.JSONDecodeError, TypeError):
-                from app.utilities.logger import warning
-                warning("Failed to parse TOKEN_LIMITS from environment, using defaults")
-                
-        # Default token limits for various OpenAI models
-        # These values represent the maximum combined tokens (input + output)
-        return {
-            "gpt-3.5-turbo": 16385,
-            "gpt-3.5-turbo-0125": 16385,
-            "gpt-3.5-turbo-1106": 16385,
-            "gpt-3.5-turbo-16k": 16385,
-            "gpt-4": 8192,
-            "gpt-4-1106-preview": 128000,
-            "gpt-4-0125-preview": 128000,
-            "gpt-4-turbo-preview": 128000,
-            "gpt-4-turbo": 128000,
-            "gpt-4-0314": 8192,
-            "gpt-4-32k": 32768,
-            "gpt-4-32k-0314": 32768,
-            "gpt-4o": 128000,
-            "gpt-4o-mini": 32768,
-            "gpt-4o-2024-05-13": 128000,
-            "gpt-4o-2024-08-06": 128000,
-        }
     
     # Use a lock to protect token_limits cache for thread safety
     _token_limits_lock = threading.Lock()

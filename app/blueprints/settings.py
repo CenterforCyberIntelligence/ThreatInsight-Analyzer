@@ -12,6 +12,9 @@ from app.config.config import Config
 from app.models.database import get_token_usage_stats
 from dotenv import load_dotenv
 import logging
+from pathlib import Path
+from app.utilities.logger import print_status, warning, error, info
+from app.utilities.sanitizers import sanitize_input
 
 settings_bp = Blueprint('settings', __name__)
 
@@ -59,17 +62,17 @@ def restart_server():
 def update_env():
     """Update environment variables."""
     try:
-        # Get form data
+        # Get form data and sanitize inputs
         new_env_vars = {
-            "OPENAI_API_KEY": request.form.get("OPENAI_API_KEY"),
-            "OPENAI_MODEL": request.form.get("OPENAI_MODEL"),
-            "OPENAI_TEMPERATURE": request.form.get("OPENAI_TEMPERATURE"),
-            "OPENAI_MAX_TOKENS": request.form.get("OPENAI_MAX_TOKENS"),
-            "AVAILABLE_MODELS": request.form.get("AVAILABLE_MODELS"),
-            "FLASK_HOST": request.form.get("FLASK_HOST"),
-            "FLASK_PORT": request.form.get("FLASK_PORT"),
-            "FLASK_DEBUG": request.form.get("FLASK_DEBUG"),
-            "HEADING_FONT": request.form.get("HEADING_FONT")
+            "OPENAI_API_KEY": sanitize_input(request.form.get("OPENAI_API_KEY")),
+            "OPENAI_MODEL": sanitize_input(request.form.get("OPENAI_MODEL")),
+            "OPENAI_TEMPERATURE": sanitize_input(request.form.get("OPENAI_TEMPERATURE")),
+            "OPENAI_MAX_TOKENS": sanitize_input(request.form.get("OPENAI_MAX_TOKENS")),
+            "AVAILABLE_MODELS": sanitize_input(request.form.get("AVAILABLE_MODELS")),
+            "FLASK_HOST": sanitize_input(request.form.get("FLASK_HOST")),
+            "FLASK_PORT": sanitize_input(request.form.get("FLASK_PORT")),
+            "FLASK_DEBUG": sanitize_input(request.form.get("FLASK_DEBUG")),
+            "HEADING_FONT": sanitize_input(request.form.get("HEADING_FONT"))
         }
         
         # Validate JSON format for AVAILABLE_MODELS
@@ -120,7 +123,7 @@ def update_env():
         load_dotenv(override=True)
         
         # Set restart flag and return success
-        should_restart = request.form.get("should_restart", "false").lower() == "true"
+        should_restart = sanitize_input(request.form.get("should_restart", "false")).lower() == "true"
         
         if should_restart:
             # Schedule a restart after response is sent
@@ -131,13 +134,13 @@ def update_env():
     except Exception as e:
         logging.error(f"Error updating environment variables: {str(e)}")
         return jsonify({"success": False, "message": "An internal error has occurred while updating environment variables."})
-        main
 
 @settings_bp.route('/settings/purge_database', methods=['POST'])
 def purge_database():
-    """Purge database records."""
+    """Purge the database."""
     try:
-        confirmation = request.form.get("confirmation")
+        # Get confirmation from the form
+        confirmation = sanitize_input(request.form.get("confirmation"))
         if confirmation != "DELETE":
             return jsonify({
                 "success": False, 
@@ -165,15 +168,19 @@ def purge_database():
     except Exception as e:
         logging.error("Error purging database", exc_info=True)
         return jsonify({"success": False, "message": "An internal error has occurred. Please try again later."})
-        main
 
 @settings_bp.route('/settings/restart', methods=['POST'])
 def restart():
     """Restart the Flask server."""
     try:
-        threading.Thread(target=restart_server).start()
-        return jsonify({"success": True, "message": "Server is restarting..."})
+        # Check if server should be restarted immediately
+        should_restart = sanitize_input(request.form.get("should_restart", "false")).lower() == "true"
+        
+        if should_restart:
+            threading.Thread(target=restart_server).start()
+            return jsonify({"success": True, "message": "Server is restarting..."})
+        
+        return jsonify({"success": True, "message": "Server restart not confirmed"})
     except Exception as e:
         logging.error("Error restarting server", exc_info=True)
         return jsonify({"success": False, "message": "An internal error has occurred. Please try again later."})
-        main

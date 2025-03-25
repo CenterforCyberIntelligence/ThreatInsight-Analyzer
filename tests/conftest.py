@@ -202,8 +202,8 @@ def sample_article_data():
         "structured_analysis": {
             "summary": "This article discusses a recent cybersecurity threat.",
             "source_evaluation": {
-                "reliability": "Medium",
-                "credibility": "Medium", 
+                "reliability": {"level": "Medium", "justification": "Limited technical details provided but comes from a known source"},
+                "credibility": {"level": "Medium", "justification": "Information aligns with known threat patterns"}, 
                 "source_type": "Cybersecurity Vendor"
             },
             "mitre_techniques": [

@@ -58,17 +58,33 @@
                     <div class="card-body">
                         <p class="card-text">Submit a URL to see CCI's AI-powered analysis and threat intelligence insights on the article.</p>
                         
-                        <form id="analysis-form" hx-post="/analyze" hx-target="#analysis-container" hx-indicator="#loading-indicator">
+                        <form id="analysis-form" 
+                              hx-post="/analyze" 
+                              hx-target="#analysis-container" 
+                              hx-indicator="#loading-indicator"
+                              onsubmit="return validateURL(this);">
                             <div class="mb-3">
-                                <label for="url" class="form-label">Article URL</label>
+                                <label for="url-input" class="form-label">Article URL</label>
                                 <div class="input-group">
-                                    <input type="url" class="form-control" id="url" name="url" placeholder="https://example.com/article" required>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-search me-2"></i> Analyze Article
+                                    <input 
+                                        type="url" 
+                                        class="form-control" 
+                                        name="url" 
+                                        id="url-input"
+                                        placeholder="Enter article URL to analyze" 
+                                        required
+                                        pattern="https?://.+"
+                                        title="Please enter a valid URL starting with http:// or https://"
+                                    >
+                                    <button 
+                                        class="btn btn-primary" 
+                                        type="submit"
+                                    >
+                                        <i class="bi bi-lightning-charge-fill me-1"></i> Analyze
                                     </button>
                                 </div>
                             </div>
-                            
+                        
                             <!-- Model Selection -->
                             <div class="mb-3">
                                 <label class="form-label mb-3">Select Model</label>
@@ -77,7 +93,7 @@
                                         <div class="card h-100 model-option-card">
                                             <div class="card-body">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o-mini" value="gpt-4o-mini" checked>
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o-mini" value="gpt-4o-mini-2024-07-18" checked>
                                                     <label class="form-check-label fw-bold" for="model-gpt4o-mini">
                                                         <i class="bi bi-cpu me-1"></i> GPT-4o mini
                                                     </label>
@@ -90,7 +106,7 @@
                                         <div class="card h-100 model-option-card">
                                             <div class="card-body">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o" value="gpt-4o">
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o" value="gpt-4o-2024-08-06">
                                                     <label class="form-check-label fw-bold" for="model-gpt4o">
                                                         <i class="bi bi-cpu-fill me-1"></i> GPT-4o
                                                     </label>
@@ -103,9 +119,9 @@
                                         <div class="card h-100 model-option-card">
                                             <div class="card-body">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt4o-turbo" value="gpt-4o-2024-08-06">
-                                                    <label class="form-check-label fw-bold" for="model-gpt4o-turbo">
-                                                        <i class="bi bi-lightning-fill me-1"></i> GPT-4.5 Turbo
+                                                    <input class="form-check-input" type="radio" name="model" id="model-gpt45-preview" value="gpt-4.5-preview-2025-02-27">
+                                                    <label class="form-check-label fw-bold" for="model-gpt45-preview">
+                                                        <i class="bi bi-lightning-fill me-1"></i> GPT-4.5 Preview
                                                     </label>
                                                     <p class="card-text mt-2">Best for: In-depth analysis of complex threat reports and intelligence briefs</p>
                                                 </div>
@@ -191,12 +207,119 @@
         </div>
     </div>
 
+    <!-- Error Modal Container - Will be replaced by the error modal content -->
+    <div id="error-modal-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Load recent analyses on page load
             htmx.ajax('GET', '/recent-analyses', {target: '#recent-analyses-container'});
         });
+
+        // HTMX event handlers for error handling
+        document.addEventListener('htmx:responseError', function(event) {
+            // Get error details from the response
+            const xhr = event.detail.xhr;
+            console.log('HTMX Error Response:', xhr.status, xhr.responseText);
+            
+            // Only handle errors from our own API endpoints
+            if (xhr.responseURL.includes('/analyze') || 
+                xhr.responseURL.includes('/analysis/') ||
+                xhr.responseURL.includes('/export/')) {
+                
+                // Set the error modal container as the target for error content
+                document.getElementById('error-modal-container').innerHTML = xhr.responseText;
+                
+                // The modal show logic is already in the error template
+                // But we'll add a fallback just in case
+                setTimeout(function() {
+                    const errorModal = document.getElementById('error-modal');
+                    if (errorModal && typeof bootstrap !== 'undefined') {
+                        const modal = new bootstrap.Modal(errorModal);
+                        modal.show();
+                    }
+                }, 100);
+                
+                // Stop the error from propagating to default HTMX error handling
+                event.preventDefault();
+            }
+        });
+        
+        // Add a global error handler for manual validation
+        function validateURL(formEl) {
+            const urlInput = formEl.querySelector('input[name="url"]');
+            if (urlInput && (!urlInput.value || urlInput.value.trim() === '')) {
+                // Clear any existing content
+                const container = document.getElementById('error-modal-container');
+                container.innerHTML = '';
+                
+                // Create the error modal directly with DOM methods
+                const modalDiv = document.createElement('div');
+                modalDiv.className = 'modal fade';
+                modalDiv.id = 'error-modal';
+                modalDiv.setAttribute('tabindex', '-1');
+                modalDiv.setAttribute('aria-labelledby', 'errorModalLabel');
+                modalDiv.setAttribute('aria-hidden', 'true');
+                
+                modalDiv.innerHTML = `
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="errorModalLabel">
+                                    <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>
+                                    URL Validation Error
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Invalid URL format. Please provide a valid URL including the protocol (http:// or https://)</p>
+                                
+                                <ul class="mt-3 ps-3">
+                                    <li>Make sure the URL uses http:// or https:// protocol</li>
+                                    <li>Check if the domain is correctly formatted</li>
+                                    <li>Try removing any special characters from the URL</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-check-lg me-1"></i> Okay
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Append to container
+                container.appendChild(modalDiv);
+                
+                // Create and add the script separately
+                const script = document.createElement('script');
+                script.textContent = `
+                    // Show modal immediately
+                    (function() {
+                        setTimeout(function() {
+                            try {
+                                const errorModal = document.getElementById('error-modal');
+                                if (errorModal) {
+                                    const bsModal = new bootstrap.Modal(errorModal);
+                                    bsModal.show();
+                                }
+                            } catch (e) {
+                                console.error('Error showing modal:', e);
+                            }
+                        }, 100);
+                    })();
+                `;
+                
+                // Append script
+                container.appendChild(script);
+                
+                return false;
+            }
+            return true;
+        }
     </script>
 </body>
 </html> 
