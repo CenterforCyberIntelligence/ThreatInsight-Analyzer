@@ -4,6 +4,7 @@ import json
 import re
 from contextlib import contextmanager
 from flask import template_rendered
+import requests
 
 from app.blueprints.analysis import validate_url
 from tests.conftest import captured_templates
@@ -11,9 +12,14 @@ from tests.conftest import captured_templates
 def test_validate_url():
     """Test URL validation function."""
     # Valid URLs
-    assert validate_url("https://example.com")[0] is True
-    assert validate_url("https://example.org/blog/article")[0] is True
-    assert validate_url("http://test.com/index.html?param=value")[0] is True
+    with patch('requests.head') as mock_head:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_head.return_value = mock_response
+        
+        assert validate_url("https://example.com")[0] is True
+        assert validate_url("https://example.org/blog/article")[0] is True
+        assert validate_url("http://test.com/index.html?param=value")[0] is True
     
     # Invalid URLs - missing protocol
     valid, error = validate_url("example.com")
@@ -26,9 +32,16 @@ def test_validate_url():
     assert "Only HTTP and HTTPS protocols are supported" in error
     
     # Invalid URLs - blocked domain
-    valid, error = validate_url("https://example-malicious-site.com")
-    assert valid is False
-    assert "domain is not allowed" in error
+    # Mock the HTTP check to pass and test domain blocking
+    with patch('requests.head') as mock_head:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_head.return_value = mock_response
+        
+        with patch('app.blueprints.analysis.BLOCKED_DOMAINS', ['example-malicious-site.com']):
+            valid, error = validate_url("https://example-malicious-site.com")
+            assert valid is False
+            assert "domain is blocked" in error
     
     # Invalid URLs - empty
     valid, error = validate_url("")
@@ -39,6 +52,36 @@ def test_validate_url():
     valid, error = validate_url(None)
     assert valid is False
     assert "URL is required" in error
+    
+    # Test non-200 response
+    with patch('requests.head') as mock_head:
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_head.return_value = mock_response
+        
+        valid, error = validate_url("https://example.com/not-found")
+        assert valid is False
+        assert "non-200 status code" in error
+    
+    # Test HEAD not supported (405) but GET returns 200
+    with patch('requests.head') as mock_head, patch('requests.get') as mock_get:
+        mock_head_response = MagicMock()
+        mock_head_response.status_code = 405
+        mock_head.return_value = mock_head_response
+        
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 200
+        mock_get.return_value = mock_get_response
+        
+        assert validate_url("https://example.com/head-not-supported")[0] is True
+    
+    # Test connection error
+    with patch('requests.head') as mock_head:
+        mock_head.side_effect = requests.exceptions.ConnectionError("Failed to establish connection")
+        
+        valid, error = validate_url("https://non-existent-site.com")
+        assert valid is False
+        assert "Failed to connect to URL" in error
 
 def test_analyze_endpoint(client, mock_requests_get, mock_openai_completion):
     """Test the analyze endpoint."""

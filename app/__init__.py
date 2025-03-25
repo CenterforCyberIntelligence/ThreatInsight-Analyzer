@@ -3,6 +3,7 @@ import time
 import signal
 import contextlib
 import sys
+import json
 from flask import Flask, render_template, jsonify, request
 from app.blueprints import main_bp, analysis_bp, stats_bp, settings_bp, history_bp
 from app.utilities.logger import logger, start_phase, end_phase, register_shutdown_handler, log_config_summary
@@ -116,6 +117,64 @@ def create_app():
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
+        return response
+    
+    # Add security headers to all responses - with lowest priority to run last
+    @app.after_request
+    def add_security_headers(response):
+        """Add standard security headers to all responses to enhance application security."""
+        # Skip adding security headers for certain content types that might be affected
+        if response.mimetype in ('application/json', 'text/css', 'application/javascript'):
+            return response
+            
+        # Set standard security headers
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        
+        # More balanced CSP approach with reporting capabilities
+        csp_directives = [
+            # Base directives - extremely permissive for now
+            "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'",
+            
+            # Scripts - allow self, inline, eval, and all required CDNs
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com",
+            
+            # Styles - allow self, inline, and all style sources
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https:",
+            
+            # Fonts - allow self and common font sources
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+            
+            # Images - allow self, data URIs, and any HTTPS source
+            "img-src 'self' data: https:",
+            
+            # Connect - allow self and any HTTPS source (for API calls)
+            "connect-src 'self' https:",
+            
+            # Object - none needed
+            "object-src 'none'"
+        ]
+        
+        # Add CSP header
+        response.headers['Content-Security-Policy'] = "; ".join(csp_directives)
+        
+        # Add CSP reporting header - ensure it matches the primary CSP
+        response.headers['Content-Security-Policy-Report-Only'] = "; ".join(csp_directives) + "; report-uri /api/csp-report; report-to csp-endpoint"
+        
+        # Add Report-To header for CSP violation reporting
+        report_to = {
+            "group": "csp-endpoint",
+            "max_age": 10886400,
+            "endpoints": [
+                {"url": "/api/csp-report"}
+            ]
+        }
+        response.headers['Report-To'] = json.dumps(report_to)
+        
         return response
     
     # Register error handlers

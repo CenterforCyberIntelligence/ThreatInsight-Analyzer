@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 from app.models.database import get_token_usage_stats, get_recent_analyses
 from app.config.config import Config
+from app.utilities.sanitizers import sanitize_input
 from datetime import datetime
 import json
 from typing import Dict, Any
@@ -19,6 +20,9 @@ def statistics():
     
     # Get model prices
     model_prices = Config.get_model_prices()
+    
+    # Get model from query parameters or use default
+    model = sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))
     
     # Create a normalized model prices dictionary for the template
     normalized_model_prices = {}
@@ -71,6 +75,9 @@ def refresh_statistics():
     
     # Get model prices
     model_prices = Config.get_model_prices()
+    
+    # Get model from query parameters or use default
+    model = sanitize_input(request.args.get('model', Config.DEFAULT_MODEL))
     
     # Create a normalized model prices dictionary for the template
     normalized_model_prices = {}
